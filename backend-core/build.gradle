@@ -1,0 +1,155 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'com.google.protobuf' version '0.9.4'
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
+    maven { url 'https://repo.spring.io/snapshot' }
+}
+
+springBoot {
+    mainClass = 'tradingbot.AgenticTradingApplication'
+}
+
+group = 'tradingbot'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+dependencies {
+    // Spring Boot dependencies
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'jakarta.persistence:jakarta.persistence-api:3.1.0'
+    
+    // Spring Security + JWT
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+    
+    // OAuth2/OpenID Connect (optional - for social login)
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+    // Web3j for dYdX Authentication
+    implementation 'org.web3j:core:4.10.3'
+    
+    // Database
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.h2database:h2' // For testing
+    
+    // Bucket4j for distributed inbound rate limiting (auth endpoints, per-IP via Redis)
+    implementation "com.bucket4j:bucket4j-core:${bucket4jVersion}"
+    implementation "com.bucket4j:bucket4j-redis:${bucket4jVersion}"
+
+    // Resilience4j for rate limiting and circuit breaker
+    implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
+    implementation "io.github.resilience4j:resilience4j-ratelimiter:${resilience4jVersion}"
+    implementation "io.github.resilience4j:resilience4j-circuitbreaker:${resilience4jVersion}"
+    implementation "io.github.resilience4j:resilience4j-retry:${resilience4jVersion}"
+    implementation "io.github.resilience4j:resilience4j-reactor:${resilience4jVersion}"
+    implementation "io.github.resilience4j:resilience4j-bulkhead:${resilience4jVersion}"
+
+    // External API dependencies
+    implementation 'io.github.binance:binance-connector-java:3.3.0'
+    implementation "io.github.binance:binance-futures-connector-java:${binanceConnectorVersion}"
+    implementation "io.github.wuhewuhe:bybit-java-api:${bybitApiVersion}"
+
+    // WebSocket support
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'io.projectreactor:reactor-core'
+    
+    // Technical analysis
+    implementation "org.ta4j:ta4j-core:${ta4jVersion}"
+    
+    // JSON processing
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    
+    // OpenAPI/Swagger documentation
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+    
+    // Bean Validation (JSR-303)
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+    
+    // Actuator for monitoring
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    
+    // HTTP client for gateway proxying
+    implementation "org.springframework.boot:spring-boot-starter-webflux"
+    
+    // MapStruct for DTO mapping
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    testAnnotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+    // Message Queue Dependencies
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+
+    // gRPC and Protobuf dependencies
+    implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "io.grpc:grpc-services:${grpcVersion}"
+    implementation "net.devh:grpc-server-spring-boot-starter:${grpcSpringBootVersion}"
+    implementation "net.devh:grpc-client-spring-boot-starter:${grpcSpringBootVersion}"
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    compileOnly "org.apache.tomcat:annotations-api:6.0.53" // For javax.annotation.Generated
+
+    // LangChain4j dependencies for agentic AI
+    implementation "dev.langchain4j:langchain4j:${langchain4jVersion}"
+    implementation "dev.langchain4j:langchain4j-open-ai:${langchain4jVersion}"
+
+    // Test dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'org.postgresql:postgresql'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'jakarta.persistence:jakarta.persistence-api:3.1.0'
+    testImplementation 'org.apache.commons:commons-dbcp2:2.9.0'
+
+    // Prometheus metrics registry (exposes /actuator/prometheus scrape endpoint)
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
