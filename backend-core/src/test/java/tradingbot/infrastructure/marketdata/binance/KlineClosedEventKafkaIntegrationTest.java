@@ -41,10 +41,9 @@ import org.testcontainers.utility.DockerImageName;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import reactor.core.publisher.Flux;
 import tradingbot.agent.application.AgentOrchestrator;
-import tradingbot.agent.application.PerformanceTrackingService;
+import tradingbot.agent.application.TradeExecutionService;
 import tradingbot.agent.application.strategy.LangChain4jStrategy;
 import tradingbot.agent.domain.repository.AgentRepository;
-import tradingbot.agent.infrastructure.repository.OrderRepository;
 import tradingbot.bot.metrics.TradingMetrics;
 import tradingbot.domain.market.KlineClosedEvent;
 import tradingbot.domain.market.StreamMarketDataEvent;
@@ -204,13 +203,8 @@ class KlineClosedEventKafkaIntegrationTest {
         }
 
         @Bean
-        OrderRepository orderRepository() {
-            return mock(OrderRepository.class);
-        }
-
-        @Bean
-        PerformanceTrackingService performanceTrackingService() {
-            return mock(PerformanceTrackingService.class);
+        TradeExecutionService tradeExecutionService() {
+            return mock(TradeExecutionService.class);
         }
 
         @Bean
@@ -241,8 +235,7 @@ class KlineClosedEventKafkaIntegrationTest {
                 ExchangeWebSocketClient exchangeWebSocketClient,
                 BulkheadRegistry bulkheadRegistry,
                 OrderExecutionGatewayRegistry orderExecutionGatewayRegistry,
-                OrderRepository orderRepository,
-                PerformanceTrackingService performanceTrackingService,
+                TradeExecutionService tradeExecutionService,
                 ApplicationEventPublisher applicationEventPublisher,
                 TradingMetrics tradingMetrics) {
 
@@ -256,8 +249,7 @@ class KlineClosedEventKafkaIntegrationTest {
                     bulkheadRegistry,
                     null,
                     orderExecutionGatewayRegistry,
-                    orderRepository,
-                    performanceTrackingService,
+                    tradeExecutionService,
                     applicationEventPublisher,
                     tradingMetrics,
                     "langchain4j");

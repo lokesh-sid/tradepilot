@@ -23,7 +23,6 @@ import tradingbot.agent.infrastructure.repository.OrderRepository;
 import tradingbot.agent.infrastructure.repository.PositionRepository;
 import tradingbot.agent.infrastructure.repository.TradeMemoryRepository;
 import tradingbot.agent.manager.AgentManager;
-import tradingbot.bot.FuturesTradingBot;
 import tradingbot.bot.messaging.EventPublisher;
 import tradingbot.bot.persistence.repository.TradingEventRepository;
 import tradingbot.bot.service.FuturesExchangeService;
@@ -78,9 +77,6 @@ public abstract class AbstractControllerValidationTest extends AbstractHttpTest 
 
     @MockitoBean
     protected UserRepository userRepository;
-
-    @MockitoBean
-    protected FuturesTradingBot tradingBot;
 
     @MockitoBean
     protected EventPublisher eventPublisher;

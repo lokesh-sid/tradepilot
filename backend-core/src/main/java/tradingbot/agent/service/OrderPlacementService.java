@@ -21,6 +21,8 @@ import tradingbot.bot.controller.exception.BotOperationException;
 import tradingbot.bot.events.TradeExecutionEvent;
 import tradingbot.bot.messaging.EventPublisher;
 import tradingbot.agent.config.AgentExecutionContext;
+import tradingbot.agent.domain.model.Position;
+import tradingbot.bot.service.OrderResult;
 /**
  * OrderPlacementService - Parses LLM reasoning and executes orders
  * 
@@ -313,7 +315,7 @@ public class OrderPlacementService {
             }
             
             // Execute the main order based on direction
-            tradingbot.bot.service.OrderResult orderResult;
+            OrderResult orderResult;
             if (order.getDirection() == TradeDirection.LONG) {
                 orderResult = executionContext.get().enterLongPosition(order.getSymbol(), order.getQuantity());
                 logger.info("Entered LONG position: {} units of {} - Exchange Order ID: {}", 
@@ -334,7 +336,7 @@ public class OrderPlacementService {
                 order.getId(), orderResult.getExchangeOrderId());
             
             // Create position record for tracking
-            tradingbot.agent.domain.model.Position position = positionMonitoringService.createPosition(
+            Position position = positionMonitoringService.createPosition(
                 order.getAgentId(),
                 order.getSymbol(),
                 order.getDirection(),
@@ -362,7 +364,7 @@ public class OrderPlacementService {
      * Place stop-loss and take-profit orders after main order fills
      * These are separate reduce-only orders that close the position
      */
-    private void placeStopLossAndTakeProfit(Order order, tradingbot.bot.service.OrderResult mainOrderResult) {
+    private void placeStopLossAndTakeProfit(Order order, OrderResult mainOrderResult) {
         try {
             String symbol = order.getSymbol();
             double quantity = order.getQuantity();
@@ -372,7 +374,7 @@ public class OrderPlacementService {
             // Place stop-loss order if specified
             if (order.getStopLoss() != null) {
                 try {
-                    tradingbot.bot.service.OrderResult slResult = executionContext.get().placeStopLossOrder(
+                    OrderResult slResult = executionContext.get().placeStopLossOrder(
                         symbol,
                         closingAction,
                         quantity,
@@ -388,7 +390,7 @@ public class OrderPlacementService {
             // Place take-profit order if specified
             if (order.getTakeProfit() != null) {
                 try {
-                    tradingbot.bot.service.OrderResult tpResult = executionContext.get().placeTakeProfitOrder(
+                    OrderResult tpResult = executionContext.get().placeTakeProfitOrder(
                         symbol,
                         closingAction,
                         quantity,

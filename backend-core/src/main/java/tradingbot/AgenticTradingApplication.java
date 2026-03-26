@@ -1,11 +1,7 @@
 package tradingbot;
 
-import java.util.Arrays;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -21,32 +17,16 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration;
-import tradingbot.bot.FuturesTradingBot;
-import tradingbot.bot.FuturesTradingBot.BotParams;
-import tradingbot.bot.TradeDirection;
 import tradingbot.bot.events.BotStatusEvent;
 import tradingbot.bot.messaging.EventPublisher;
 import tradingbot.bot.messaging.EventTopic;
-import tradingbot.bot.service.FuturesExchangeService;
 import tradingbot.bot.strategy.analyzer.SentimentAnalyzer;
-import tradingbot.bot.strategy.calculator.IndicatorCalculator;
-import tradingbot.bot.strategy.exit.LiquidationRiskExit;
-import tradingbot.bot.strategy.exit.MACDExit;
-import tradingbot.bot.strategy.exit.PositionExitCondition;
-import tradingbot.bot.strategy.exit.TrailingStopExit;
-import tradingbot.bot.strategy.indicator.BollingerBandsIndicator;
-import tradingbot.bot.strategy.indicator.MACDTechnicalIndicator;
-import tradingbot.bot.strategy.indicator.RSITechnicalIndicator;
-import tradingbot.bot.strategy.indicator.TechnicalIndicator;
-import tradingbot.bot.strategy.tracker.TrailingStopTracker;
 import tradingbot.config.InstanceConfig;
-import tradingbot.config.TradingConfig;
 
 @SpringBootApplication(exclude = {
     GrpcServerSecurityAutoConfiguration.class
@@ -140,51 +120,6 @@ public class AgenticTradingApplication {
         return new SentimentAnalyzer(restTemplate);
     }
 
-    @Bean
-    FuturesTradingBot tradingBot(
-            FuturesExchangeService exchangeService,
-            SentimentAnalyzer sentimentAnalyzer,
-            @Value("${trading.binance.api.key}") String apiKey) {
-        TradingConfig config = new TradingConfig();
-        TechnicalIndicator rsiIndicator = new RSITechnicalIndicator(config.getLookbackPeriodRsi());
-        TechnicalIndicator macdIndicator = new MACDTechnicalIndicator(config.getMacdFastPeriod(), config.getMacdSlowPeriod(), config.getMacdSignalPeriod(), false);
-        TechnicalIndicator macdSignalIndicator = new MACDTechnicalIndicator(config.getMacdFastPeriod(), config.getMacdSlowPeriod(), config.getMacdSignalPeriod(), true);
-        TechnicalIndicator bbLowerIndicator = new BollingerBandsIndicator(config.getBbPeriod(), config.getBbStandardDeviation(), true);
-        TechnicalIndicator bbUpperIndicator = new BollingerBandsIndicator(config.getBbPeriod(), config.getBbStandardDeviation(), false);
-        java.util.Map<String, TechnicalIndicator> indicators = new java.util.HashMap<>();
-        indicators.put("rsi", rsiIndicator);
-        indicators.put("macd", macdIndicator);
-        indicators.put("macdSignal", macdSignalIndicator);
-        indicators.put("bbLower", bbLowerIndicator);
-        indicators.put("bbUpper", bbUpperIndicator);
-        IndicatorCalculator indicatorCalculator = new IndicatorCalculator(exchangeService, indicators, new RedisTemplate<>());
-        TrailingStopTracker trailingStopTracker = new TrailingStopTracker(exchangeService, config.getTrailingStopPercent());
-        List<PositionExitCondition> exitConditions = Arrays.asList(
-                new TrailingStopExit(trailingStopTracker),
-                new MACDExit(indicatorCalculator),
-                new LiquidationRiskExit(exchangeService, trailingStopTracker, config)
-        );
-        
-        // Skip leverage initialization if using placeholder API credentials
-        boolean skipLeverageInit = "YOUR_BINANCE_API_KEY".equals(apiKey) 
-            || "your-binance-api-key-here".equals(apiKey)
-            || apiKey == null 
-            || apiKey.trim().isEmpty();
-        
-        // Use BotParams to pass all required parameters
-        BotParams botParams = new BotParams.Builder()
-            .exchangeService(exchangeService)
-            .indicatorCalculator(indicatorCalculator)
-            .trailingStopTracker(trailingStopTracker)
-            .sentimentAnalyzer(sentimentAnalyzer)
-            .exitConditions(exitConditions)
-            .config(config)
-            .tradeDirection(TradeDirection.LONG)
-            .skipLeverageInit(skipLeverageInit) // Skip if using placeholder credentials
-            .build();
-        return new FuturesTradingBot(botParams);
-    }
-    
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         log.info("🚀 TradePilot started successfully!");

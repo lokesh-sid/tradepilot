@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import tradingbot.bot.events.TradeSignalEvent;
-import tradingbot.bot.messaging.TradeExecutionService.RiskAssessment;
+import tradingbot.bot.messaging.EventDrivenTradeExecutionService.RiskAssessment;
 import tradingbot.bot.service.FuturesExchangeService;
 
 /**
@@ -41,7 +41,7 @@ public class RiskAssessmentService {
             
             // Check signal strength
             if (signalEvent.getStrength() < MIN_SIGNAL_STRENGTH) {
-                return new TradeExecutionService.RiskAssessment(
+                return new EventDrivenTradeExecutionService.RiskAssessment(
                     false, 
                     "Signal strength too low: " + signalEvent.getStrength(),
                     0.0
@@ -51,7 +51,7 @@ public class RiskAssessmentService {
             // Check available balance
             double balance = exchangeService.getMarginBalance();
             if (balance < MIN_BALANCE_THRESHOLD) {
-                return new TradeExecutionService.RiskAssessment(
+                return new EventDrivenTradeExecutionService.RiskAssessment(
                     false,
                     "Insufficient balance: " + balance,
                     0.0
@@ -63,7 +63,7 @@ public class RiskAssessmentService {
             
             // Verify risk is within acceptable limits
             if (riskPercentage > MAX_SINGLE_TRADE_RISK) {
-                return new TradeExecutionService.RiskAssessment(
+                return new EventDrivenTradeExecutionService.RiskAssessment(
                     false,
                     "Risk percentage too high: " + riskPercentage,
                     MAX_SINGLE_TRADE_RISK
@@ -83,7 +83,7 @@ public class RiskAssessmentService {
             
         } catch (Exception ex) {
             log.error("Risk assessment failed for signal: {}", signalEvent.getEventId(), ex);
-            return new TradeExecutionService.RiskAssessment(
+            return new EventDrivenTradeExecutionService.RiskAssessment(
                 false,
                 "Risk assessment error: " + ex.getMessage(),
                 0.0

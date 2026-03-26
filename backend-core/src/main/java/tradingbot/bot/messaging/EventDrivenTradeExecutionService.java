@@ -22,15 +22,15 @@ import tradingbot.bot.service.FuturesExchangeService;
  * proper Kafka consumers with @KafkaListener annotations.
  */
 @Service
-public class TradeExecutionService {
+public class EventDrivenTradeExecutionService {
     
-    private static final Logger log = LoggerFactory.getLogger(TradeExecutionService.class);
+    private static final Logger log = LoggerFactory.getLogger(EventDrivenTradeExecutionService.class);
     
     private final FuturesExchangeService exchangeService;
     private final EventPublisher eventPublisher;
     private final RiskAssessmentService riskService;
     
-    public TradeExecutionService(FuturesExchangeService exchangeService,
+    public EventDrivenTradeExecutionService(FuturesExchangeService exchangeService,
                                EventPublisher eventPublisher,
                                RiskAssessmentService riskService) {
         this.exchangeService = exchangeService;

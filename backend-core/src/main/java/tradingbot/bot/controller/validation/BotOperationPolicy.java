@@ -3,7 +3,6 @@ package tradingbot.bot.controller.validation;
 import org.springframework.stereotype.Component;
 
 import tradingbot.agent.TradingAgent;
-import tradingbot.bot.FuturesTradingBot;
 import tradingbot.bot.controller.exception.BotAlreadyRunningException;
 import tradingbot.bot.controller.exception.ConflictException;
 
@@ -48,13 +47,12 @@ public class BotOperationPolicy {
 
     /**
      * Asserts that leverage may be updated.
-     * Changing leverage against an open live position risks immediate exchange rejection
-     * or unintended liquidation.
+     * Changing leverage against a running agent risks exchange rejection.
      */
-    public void assertCanUpdateLeverage(FuturesTradingBot bot, String botId) {
-        if (bot.isRunning() && hasActivePosition(bot)) {
+    public void assertCanUpdateLeverage(TradingAgent agent, String botId) {
+        if (agent != null && agent.isRunning()) {
             throw new IllegalStateException(
-                "Bot " + botId + " has an open position. Close the position before changing leverage."
+                "Bot " + botId + " is currently running. Stop the bot before changing leverage."
             );
         }
     }
@@ -63,8 +61,8 @@ public class BotOperationPolicy {
      * Asserts that a running bot may be stopped.
      * Throws ConflictException (→ 409) if the bot is already stopped.
      */
-    public void assertCanStop(FuturesTradingBot bot, String botId) {
-        if (!bot.isRunning()) {
+    public void assertCanStop(TradingAgent agent, String botId) {
+        if (!agent.isRunning()) {
             throw new ConflictException(
                 "Bot " + botId + " is already stopped."
             );
@@ -75,20 +73,11 @@ public class BotOperationPolicy {
      * Asserts that a running bot may be paused.
      * Throws ConflictException (→ 409) if the bot is not running.
      */
-    public void assertCanPause(FuturesTradingBot bot, String botId) {
-        if (!bot.isRunning()) {
+    public void assertCanPause(TradingAgent agent, String botId) {
+        if (!agent.isRunning()) {
             throw new ConflictException(
                 "Bot " + botId + " is not running. Cannot pause a stopped bot."
             );
         }
-    }
-
-    // -----------------------------------------------------------------
-    // Private helpers
-    // -----------------------------------------------------------------
-
-    private boolean hasActivePosition(FuturesTradingBot bot) {
-        return bot.getPositionStatus() != null
-            && !bot.getPositionStatus().equalsIgnoreCase("FLAT");
     }
 }

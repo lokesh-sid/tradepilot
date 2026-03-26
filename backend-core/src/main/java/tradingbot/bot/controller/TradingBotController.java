@@ -39,8 +39,6 @@ import tradingbot.agent.TradingAgent;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.infrastructure.repository.JpaAgentRepository;
 import tradingbot.agent.manager.AgentManager;
-import tradingbot.bot.FuturesTradingBot;
-import tradingbot.bot.TradeDirection;
 import tradingbot.bot.capability.LeverageConfigurable;
 import tradingbot.bot.capability.SentimentAware;
 import tradingbot.bot.controller.dto.request.BotStartRequest;
@@ -220,19 +218,13 @@ public class TradingBotController {
         // Refresh agent to pick up changes
         agentManager.refreshAgent(botId);
         agentManager.startAgent(botId);
-        
-        FuturesTradingBot bot = botRequestValidator.resolveAgentAs(botId, FuturesTradingBot.class);
-        
-        // Create status response with data
+
+        TradingAgent startedAgent = agentManager.getAgent(botId);
         BotStatusResponse statusResponse = new BotStatusResponse();
-        statusResponse.setRunning(bot.isRunning());
-        statusResponse.setSymbol(bot.getConfig().getSymbol());
-        statusResponse.setPositionStatus(bot.getPositionStatus());
-        statusResponse.setEntryPrice(bot.getEntryPrice());
-        statusResponse.setLeverage(bot.getCurrentLeverage());
-        statusResponse.setSentimentEnabled(bot.isSentimentEnabled());
-        statusResponse.setStatusMessage(bot.getStatus());
-        
+        statusResponse.setRunning(startedAgent != null && startedAgent.isRunning());
+        statusResponse.setSymbol(entity.getTradingSymbol());
+        statusResponse.setPaperMode(paperMode);
+
         String mode = paperMode ? "paper" : "live";
         String message = "Trading bot " + botId + " started in " + request.getDirection() + " mode (" + mode + ")";
         
@@ -266,33 +258,12 @@ public class TradingBotController {
         }
         
         boolean wasRunning = agent.isRunning();
-        String finalPositionStatus = null;
-        if (agent instanceof FuturesTradingBot) {
-            finalPositionStatus = ((FuturesTradingBot) agent).getPositionStatus();
-        }
-        
+
         agentManager.stopAgent(botId);
-        
-        // Update entity status
-        agentRepository.findById(botId).ifPresent(entity -> {
-            AgentEntity updated = new AgentEntity.Builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .goalType(entity.getGoalType())
-                .goalDescription(entity.getGoalDescription())
-                .tradingSymbol(entity.getTradingSymbol())
-                .capital(entity.getCapital())
-                .status(AgentEntity.AgentStatus.STOPPED)
-                .createdAt(entity.getCreatedAt())
-                .ownerId(entity.getOwnerId())
-                .executionMode(entity.getExecutionMode())
-                .build();
-            agentRepository.save(updated);
-        });
-        
+
         BotStopResponse response = new BotStopResponse(
             "Trading bot " + botId + " stopped successfully",
-            finalPositionStatus,
+            null,
             wasRunning
         );
         return ResponseEntity.ok(response);
@@ -313,17 +284,15 @@ public class TradingBotController {
             @Parameter(description = "Unique bot identifier (UUID format)") 
             @PathVariable @ValidBotId String botId) {
         
-        FuturesTradingBot bot = botRequestValidator.resolveAgentAs(botId, FuturesTradingBot.class);
+        TradingAgent agent = botRequestValidator.resolveAgent(botId);
         BotStatusResponse response = new BotStatusResponse();
-        
-        response.setRunning(bot.isRunning());
-        response.setSymbol(bot.getConfig().getSymbol());
-        response.setPositionStatus(bot.getPositionStatus());
-        response.setEntryPrice(bot.getEntryPrice());
-        response.setLeverage(bot.getCurrentLeverage());
-        response.setSentimentEnabled(bot.isSentimentEnabled());
-        response.setStatusMessage(bot.getStatus());
-        
+
+        response.setRunning(agent.isRunning());
+        agentRepository.findById(botId).ifPresent(entity -> {
+            response.setSymbol(entity.getTradingSymbol());
+            response.setPaperMode(entity.getExecutionMode() == AgentEntity.ExecutionMode.FUTURES_PAPER);
+        });
+
         return ResponseEntity.ok(response);
     }
 
@@ -366,13 +335,10 @@ public class TradingBotController {
                 .executionMode(entity.getExecutionMode())
                 .build();
             agentRepository.save(updated);
-            
-            // Update runtime agent if exists
-            TradingAgent agent = agentManager.getAgent(botId);
-            if (agent instanceof FuturesTradingBot) {
-                ((FuturesTradingBot) agent).updateConfig(config);
-            }
-            
+
+            // Recreate the runtime agent with the new config
+            agentManager.refreshAgent(botId);
+
             logger.info("Updated configuration for bot: {}", botId);
             
             ConfigUpdateResponse response = new ConfigUpdateResponse(
@@ -408,10 +374,9 @@ public class TradingBotController {
         // Resolve via capability interface — works for any future bot type that supports leverage
         LeverageConfigurable bot = botRequestValidator.resolveAgentAs(botId, LeverageConfigurable.class);
 
-        // Policy: reject leverage change while bot has an open position
-        if (bot instanceof FuturesTradingBot) {
-            botOperationPolicy.assertCanUpdateLeverage((FuturesTradingBot) bot, botId);
-        }
+        // Policy: reject leverage change while bot is running
+        botOperationPolicy.assertCanUpdateLeverage(botRequestValidator.resolveAgent(botId), botId);
+
         double previousLeverage = bot.getCurrentLeverage();
         bot.setDynamicLeverage(request.getLeverage().intValue());
         
@@ -595,18 +560,6 @@ public class TradingBotController {
             }
         }
 
-        // Filter by direction — check the in-memory agent's trade direction
-        if (direction != null && !direction.isEmpty()) {
-            TradingAgent inMemoryAgent = agentManager.getAgent(agent.getId());
-            if (!(inMemoryAgent instanceof FuturesTradingBot)) {
-                return false;
-            }
-            TradeDirection dir = ((FuturesTradingBot) inMemoryAgent).getDirection();
-            if (dir == null || !dir.name().equalsIgnoreCase(direction)) {
-                return false;
-            }
-        }
-
         // Text search in botId or symbol
         if (search != null && !search.isEmpty()) {
             String searchLower = search.toLowerCase();
@@ -685,10 +638,4 @@ public class TradingBotController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Public accessor for BotStateController and other controllers
-     */
-    public FuturesTradingBot getTradingBot(String botId) {
-        return botRequestValidator.resolveAgentAs(botId, FuturesTradingBot.class);
-    }
 }

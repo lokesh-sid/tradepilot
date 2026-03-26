@@ -2,9 +2,10 @@ package tradingbot;
 
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
-import tradingbot.config.FuturesTradingBotIntegrationTestConfig;
+import tradingbot.config.ContainerIntegrationTestConfig;
 
 /**
  * Abstract base class for integration tests that test complete workflows
@@ -13,10 +14,11 @@ import tradingbot.config.FuturesTradingBotIntegrationTestConfig;
  * Provides generic HTTP request utilities.
  */
 @SpringBootTest(
-    classes = FuturesTradingBotIntegrationTestConfig.class,
+    classes = ContainerIntegrationTestConfig.class,
     webEnvironment = SpringBootTest.WebEnvironment.MOCK
 )
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = "ADMIN")
 @ActiveProfiles("container-test")
 public abstract class AbstractIntegrationTest extends AbstractContainerIntegrationTest {
     // Integration-specific setup inherited from AbstractHttpTest

@@ -1,7 +1,5 @@
 package tradingbot.config;
 
-import java.util.List;
-
 import javax.sql.DataSource;
 
 import org.mockito.Mockito;
@@ -24,6 +22,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.TestPropertySource;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -51,16 +52,11 @@ import tradingbot.agent.service.RAGService;
 import tradingbot.agent.service.TradeReflectionService;
 import tradingbot.agent.service.TradingAgentService;
 import tradingbot.agent.service.TradingTools;
-import tradingbot.bot.FuturesTradingBot;
 import tradingbot.bot.controller.dto.BotState;
 import tradingbot.bot.persistence.entity.TradingEventEntity;
 import tradingbot.bot.service.FuturesExchangeService;
-import tradingbot.bot.service.PaperFuturesExchangeService;
 import tradingbot.bot.strategy.analyzer.SentimentAnalyzer;
-import tradingbot.bot.strategy.calculator.IndicatorCalculator;
 import tradingbot.bot.strategy.calculator.IndicatorValues;
-import tradingbot.bot.strategy.exit.PositionExitCondition;
-import tradingbot.bot.strategy.tracker.TrailingStopTracker;
 import tradingbot.domain.market.StreamMarketDataEvent;
 import tradingbot.infrastructure.marketdata.ExchangeWebSocketClient;
 import tradingbot.security.repository.RefreshTokenRepository;
@@ -110,8 +106,8 @@ import tradingbot.security.repository.UserRepository;
         "tradingbot.agent.impl",
         "tradingbot.agent.infrastructure.repository",
         "tradingbot.agent.api",
+        "tradingbot.agent.security",
         "tradingbot.security.controller",
-        "tradingbot.security.config",
         "tradingbot.security.filter",
         "tradingbot.security.service"
     },
@@ -192,20 +188,6 @@ public class ContainerIntegrationTestConfig {
     }
 
     @Bean
-    public FuturesTradingBot tradingBot() {
-        FuturesTradingBot mockBot = Mockito.mock(FuturesTradingBot.class);
-        Mockito.when(mockBot.getExchangeService()).thenReturn(new PaperFuturesExchangeService());
-        Mockito.when(mockBot.getIndicatorCalculator()).thenReturn(Mockito.mock(IndicatorCalculator.class));
-        Mockito.when(mockBot.getTrailingStopTracker()).thenReturn(Mockito.mock(TrailingStopTracker.class));
-        Mockito.when(mockBot.getSentimentAnalyzer()).thenReturn(Mockito.mock(SentimentAnalyzer.class));
-        PositionExitCondition mockExit = Mockito.mock(PositionExitCondition.class);
-        Mockito.when(mockExit.shouldExit()).thenReturn(false);
-        Mockito.when(mockBot.getExitConditions()).thenReturn(List.of(mockExit));
-        Mockito.when(mockBot.getConfig()).thenReturn(tradingConfig());
-        return mockBot;
-    }
-
-    @Bean
     public FuturesExchangeService exchangeService() {
         return Mockito.mock(FuturesExchangeService.class);
     }
@@ -244,6 +226,16 @@ public class ContainerIntegrationTestConfig {
     @Bean
     public RefreshTokenRepository refreshTokenRepository() {
         return Mockito.mock(RefreshTokenRepository.class);
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return Mockito.mock(PasswordEncoder.class);
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager() {
+        return Mockito.mock(AuthenticationManager.class);
     }
 
     @Bean

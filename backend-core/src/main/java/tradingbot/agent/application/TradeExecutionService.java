@@ -1,0 +1,147 @@
+package tradingbot.agent.application;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
+
+import tradingbot.agent.application.event.TradeCompletedEvent;
+import tradingbot.agent.domain.execution.ExecutionResult;
+import tradingbot.agent.domain.execution.ExecutionResult.ExecutionAction;
+import tradingbot.agent.domain.model.AgentDecision;
+import tradingbot.agent.infrastructure.persistence.OrderEntity;
+import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
+import tradingbot.bot.metrics.TradingMetrics;
+
+/**
+ * TradeExecutionService — single write path for all execution outcomes.
+ *
+ * <p>Both the kline-driven path ({@link AgentOrchestrator}) and the polling/LLM
+ * path ({@link tradingbot.agent.service.OrderPlacementService}) converge here
+ * after a gateway call returns an {@link ExecutionResult}. Future bot execution
+ * engines call the same method with a bot ID — nothing else changes.
+ *
+ * <p>Responsibilities:
+ * <ul>
+ *   <li>Persist the order via {@link OrderService} — never via repository directly</li>
+ *   <li>Update performance metrics via {@link PerformanceTrackingService}</li>
+ *   <li>Record Micrometer entry/exit counters</li>
+ *   <li>Publish {@link TradeCompletedEvent} for exits (triggers async LLM reflection)</li>
+ * </ul>
+ *
+ * <p>All exceptions are caught and logged — a persistence or metrics failure must
+ * never propagate back to the caller and cancel an already-filled position.
+ *
+ * <p>The {@code executorId} parameter accepts agent IDs today and bot IDs once
+ * Phase 3 introduces the {@code bots} table. The underlying {@code orders} table
+ * stores them in the same column, disambiguated by {@code executor_type} added in V11.
+ */
+@Service
+public class TradeExecutionService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TradeExecutionService.class);
+
+    private final OrderService orderService;
+    private final PerformanceTrackingService performanceTrackingService;
+    private final ApplicationEventPublisher eventPublisher;
+    @Nullable
+    private final TradingMetrics tradingMetrics;
+
+    public TradeExecutionService(
+            OrderService orderService,
+            PerformanceTrackingService performanceTrackingService,
+            ApplicationEventPublisher eventPublisher,
+            @Nullable TradingMetrics tradingMetrics) {
+        this.orderService = orderService;
+        this.performanceTrackingService = performanceTrackingService;
+        this.eventPublisher = eventPublisher;
+        this.tradingMetrics = tradingMetrics;
+    }
+
+    /**
+     * Records a completed gateway execution: persists the order, updates performance
+     * tracking, records Micrometer counters, and publishes a {@link TradeCompletedEvent}
+     * for exits.
+     *
+     * @param executorId agent ID or (future) bot ID that produced the decision
+     * @param symbol     trading pair, e.g. {@code BTCUSDT}
+     * @param decision   the signal that triggered execution
+     * @param result     the gateway outcome
+     */
+    public void record(String executorId, String symbol, AgentDecision decision, ExecutionResult result) {
+        try {
+            persistOrder(executorId, symbol, decision, result);
+            performanceTrackingService.recordExecution(executorId, result);
+            if (result.success() && result.action() != ExecutionAction.NOOP) {
+                recordMetrics(symbol, result.action());
+                if (isExit(result.action())) {
+                    publishTradeCompleted(executorId, symbol, decision, result);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("[TradeExecutionService] Failed to record execution for {} on {}: {}",
+                    executorId, symbol, e.getMessage(), e);
+        }
+    }
+
+    private void persistOrder(String executorId, String symbol, AgentDecision decision, ExecutionResult result) {
+        double quantity = result.fillQuantity() > 0 ? result.fillQuantity()
+                : (decision.quantity() != null ? decision.quantity() : 1.0);
+
+        OrderEntity.Builder builder = OrderEntity.builder()
+                .id(UUID.randomUUID().toString())
+                .agentId(executorId)
+                .symbol(symbol)
+                .direction(decision.action() == AgentDecision.Action.BUY
+                        ? OrderEntity.Direction.LONG
+                        : OrderEntity.Direction.SHORT)
+                .price(result.fillPrice())
+                .quantity(quantity)
+                .createdAt(Instant.now());
+
+        if (result.success() && result.action() != ExecutionAction.NOOP) {
+            builder.status(OrderEntity.Status.EXECUTED)
+                   .executedAt(Instant.now())
+                   .exchangeOrderId(result.exchangeOrderId())
+                   .realizedPnl(result.realizedPnl());
+        } else {
+            builder.status(OrderEntity.Status.FAILED)
+                   .failureReason(result.reason());
+        }
+
+        orderService.createOrder(builder.build());
+    }
+
+    private void recordMetrics(String symbol, ExecutionAction action) {
+        if (tradingMetrics == null) return;
+        if (action == ExecutionAction.ENTER_LONG || action == ExecutionAction.ENTER_SHORT) {
+            tradingMetrics.recordOrderEntered(symbol,
+                    action == ExecutionAction.ENTER_LONG ? "LONG" : "SHORT");
+        } else if (action == ExecutionAction.EXIT_LONG || action == ExecutionAction.EXIT_SHORT) {
+            tradingMetrics.recordOrderExited(symbol,
+                    action == ExecutionAction.EXIT_LONG ? "LONG" : "SHORT");
+        }
+    }
+
+    private void publishTradeCompleted(String executorId, String symbol,
+                                       AgentDecision decision, ExecutionResult result) {
+        double exitPrice = result.fillPrice();
+        double pnlPercent = result.realizedPnl();
+        // Approximate entry: exit / (1 + pnl%) — avoids storing entry price separately
+        double impliedEntry = pnlPercent != 0 ? exitPrice / (1.0 + pnlPercent / 100.0) : exitPrice;
+        TradeMemoryEntity.Direction memDir = result.action() == ExecutionAction.EXIT_LONG
+                ? TradeMemoryEntity.Direction.LONG
+                : TradeMemoryEntity.Direction.SHORT;
+        eventPublisher.publishEvent(new TradeCompletedEvent(
+                executorId, symbol, memDir, impliedEntry, exitPrice, pnlPercent, decision.reasoning()));
+        logger.info("[TradeExecutionService] TradeCompletedEvent published for {} on {}", executorId, symbol);
+    }
+
+    private boolean isExit(ExecutionAction action) {
+        return action == ExecutionAction.EXIT_LONG || action == ExecutionAction.EXIT_SHORT;
+    }
+}

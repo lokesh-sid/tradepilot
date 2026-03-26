@@ -20,10 +20,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import tradingbot.agent.TradingAgent;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.infrastructure.repository.JpaAgentRepository;
 import tradingbot.agent.manager.AgentManager;
-import tradingbot.bot.FuturesTradingBot;
 import tradingbot.bot.controller.dto.request.BotStateUpdateRequest;
 import tradingbot.bot.controller.dto.request.BotStateUpdateRequest.BotStatus;
 import tradingbot.bot.controller.dto.response.BotStateResponse;
@@ -31,7 +31,6 @@ import tradingbot.bot.controller.dto.response.ErrorResponse;
 import tradingbot.bot.controller.exception.ConflictException;
 import tradingbot.bot.controller.validation.BotOperationPolicy;
 import tradingbot.bot.controller.validation.BotRequestValidator;
-import tradingbot.bot.service.BotStateService;
 import tradingbot.config.TradingSafetyService;
 
 /**
@@ -54,24 +53,23 @@ public class BotStateController {
 
     private static final Logger logger = LoggerFactory.getLogger(BotStateController.class);
 
+    private final AgentManager agentManager;
     private final JpaAgentRepository agentRepository;
     private final TradingSafetyService tradingSafetyService;
     private final BotRequestValidator botRequestValidator;
     private final BotOperationPolicy botOperationPolicy;
-    private final BotStateService botStateService;
 
     public BotStateController(
             AgentManager agentManager,
             JpaAgentRepository agentRepository,
             TradingSafetyService tradingSafetyService,
             BotRequestValidator botRequestValidator,
-            BotOperationPolicy botOperationPolicy,
-            BotStateService botStateService) {
+            BotOperationPolicy botOperationPolicy) {
+        this.agentManager = agentManager;
         this.agentRepository = agentRepository;
         this.tradingSafetyService = tradingSafetyService;
         this.botRequestValidator = botRequestValidator;
         this.botOperationPolicy = botOperationPolicy;
-        this.botStateService = botStateService;
     }
 
     @GetMapping
@@ -86,20 +84,17 @@ public class BotStateController {
                     schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotStateResponse> getCurrentState(@PathVariable String botId) {
-        // ✅ Single delegating call — no manual resolution, no instanceof, no cast
-        FuturesTradingBot bot = botRequestValidator.resolveAgentAs(botId, FuturesTradingBot.class);
+        TradingAgent agent = botRequestValidator.resolveAgent(botId);
 
         BotStateResponse response = new BotStateResponse();
         response.setBotId(botId);
-        response.setStatus(bot.isRunning() ? BotStatus.RUNNING : BotStatus.STOPPED);
-        response.setSymbol(bot.getConfig().getSymbol());
-        response.setPositionStatus(bot.getPositionStatus());
-        response.setEntryPrice(bot.getEntryPrice());
+        response.setStatus(agent.isRunning() ? BotStatus.RUNNING : BotStatus.STOPPED);
         response.setTimestamp(Instant.now());
 
-        agentRepository.findById(botId).ifPresent(entity ->
-            response.setPaperMode(entity.getExecutionMode() == AgentEntity.ExecutionMode.FUTURES_PAPER)
-        );
+        agentRepository.findById(botId).ifPresent(entity -> {
+            response.setSymbol(entity.getTradingSymbol());
+            response.setPaperMode(entity.getExecutionMode() == AgentEntity.ExecutionMode.FUTURES_PAPER);
+        });
 
         return ResponseEntity.ok(response);
     }
@@ -125,9 +120,8 @@ public class BotStateController {
             @Parameter(description = "Bot identifier") @PathVariable String botId,
             @Valid @RequestBody BotStateUpdateRequest request) {
 
-        // ✅ Single delegating call — replaces 12 lines of manual resolution
-        FuturesTradingBot currentBot = botRequestValidator.resolveAgentAs(botId, FuturesTradingBot.class);
-        BotStatus currentStatus = currentBot.isRunning() ? BotStatus.RUNNING : BotStatus.STOPPED;
+        TradingAgent currentAgent = botRequestValidator.resolveAgent(botId);
+        BotStatus currentStatus = currentAgent.isRunning() ? BotStatus.RUNNING : BotStatus.STOPPED;
 
         if (currentStatus == request.getStatus()) {
             throw new ConflictException("Bot is already in " + request.getStatus() + " state");
@@ -138,11 +132,10 @@ public class BotStateController {
         response.setPreviousStatus(currentStatus);
         response.setTimestamp(Instant.now());
 
-        // ✅ Java 14+ arrow switch — no fall-through risk
         switch (request.getStatus()) {
-            case RUNNING -> startBot(botId, currentBot, request, response);
-            case STOPPED -> stopBot(botId, currentBot, request, response);
-            case PAUSED  -> pauseBot(botId, currentBot, request, response);
+            case RUNNING -> startBot(botId, currentAgent, request, response);
+            case STOPPED -> stopBot(botId, currentAgent, request, response);
+            case PAUSED  -> pauseBot(botId, currentAgent, request, response);
         }
 
         return ResponseEntity.ok(response);
@@ -152,47 +145,42 @@ public class BotStateController {
     // Private state transition handlers
     // ------------------------------------------------------------------
 
-    private void startBot(String botId, FuturesTradingBot currentBot,
+    private void startBot(String botId, TradingAgent currentAgent,
                           BotStateUpdateRequest request, BotStateResponse response) {
-        botOperationPolicy.assertCanStart(currentBot, botId);
+        botOperationPolicy.assertCanStart(currentAgent, botId);
 
         boolean resolvedPaperMode = botRequestValidator.resolvePaperMode(botId, request.getPaperMode());
         tradingSafetyService.validateBotStartMode(resolvedPaperMode);
 
-        // ✅ Service coordinates runtime + DB atomically
-        botStateService.startBot(botId, resolvedPaperMode, request.getDirection());
-
-        // ✅ Controller resolves the refreshed bot using its own validator
-        FuturesTradingBot newBot = botRequestValidator.resolveAgentAs(botId, FuturesTradingBot.class);
+        AgentEntity.ExecutionMode mode = resolvedPaperMode
+                ? AgentEntity.ExecutionMode.FUTURES_PAPER
+                : AgentEntity.ExecutionMode.FUTURES;
+        agentManager.startAgent(botId, mode);
 
         response.setStatus(BotStatus.RUNNING);
         response.setDirection(request.getDirection());
         response.setPaperMode(resolvedPaperMode);
-        response.setSymbol(newBot.getConfig().getSymbol());
+        agentRepository.findById(botId).ifPresent(e -> response.setSymbol(e.getTradingSymbol()));
         response.setMessage("Bot started successfully"
                 + (request.getReason() != null ? ": " + request.getReason() : ""));
     }
 
-    private void stopBot(String botId, FuturesTradingBot bot,
+    private void stopBot(String botId, TradingAgent agent,
                          BotStateUpdateRequest request, BotStateResponse response) {
-        botOperationPolicy.assertCanStop(bot, botId);
-        String finalPositionStatus = bot.getPositionStatus();
+        botOperationPolicy.assertCanStop(agent, botId);
 
-        // ✅ One call — runtime + DB coordinated atomically in BotStateService
-        botStateService.stopBot(botId);
+        agentManager.stopAgent(botId);
 
         response.setStatus(BotStatus.STOPPED);
-        response.setPositionStatus(finalPositionStatus);
         response.setMessage("Bot stopped successfully"
                 + (request.getReason() != null ? ": " + request.getReason() : ""));
     }
 
-    private void pauseBot(String botId, FuturesTradingBot bot,
+    private void pauseBot(String botId, TradingAgent agent,
                           BotStateUpdateRequest request, BotStateResponse response) {
-        botOperationPolicy.assertCanPause(bot, botId);
+        botOperationPolicy.assertCanPause(agent, botId);
 
-        // ✅ One call — runtime + DB coordinated atomically in BotStateService
-        botStateService.pauseBot(botId);
+        agentManager.pauseAgent(botId);
 
         response.setStatus(BotStatus.PAUSED);
         response.setMessage("Bot paused successfully"

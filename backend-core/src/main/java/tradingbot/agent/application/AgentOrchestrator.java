@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -43,8 +42,6 @@ import tradingbot.agent.domain.model.AgentId;
 import tradingbot.agent.domain.model.AgentStatus;
 import tradingbot.agent.domain.model.AgentSymbolLink;
 import tradingbot.agent.domain.repository.AgentRepository;
-import tradingbot.agent.infrastructure.persistence.OrderEntity;
-import tradingbot.agent.infrastructure.repository.OrderRepository;
 import tradingbot.bot.metrics.TradingMetrics;
 import tradingbot.domain.market.KlineClosedEvent;
 import tradingbot.domain.market.MarketEvent;
@@ -130,8 +127,7 @@ public class AgentOrchestrator {
      */
     private final OrderExecutionGateway executionGateway;
     private final OrderExecutionGatewayRegistry gatewayRegistry;
-    private final OrderRepository orderRepository;
-    private final PerformanceTrackingService performanceTrackingService;
+    private final TradeExecutionService tradeExecutionService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final TradingMetrics tradingMetrics;
 
@@ -151,8 +147,7 @@ public class AgentOrchestrator {
             BulkheadRegistry bulkheadRegistry,
             @Nullable OrderExecutionGateway executionGateway,
             OrderExecutionGatewayRegistry gatewayRegistry,
-            OrderRepository orderRepository,
-            PerformanceTrackingService performanceTrackingService,
+            TradeExecutionService tradeExecutionService,
             ApplicationEventPublisher eventPublisher,
             TradingMetrics tradingMetrics,
             @Value("${agent.strategy:langchain4j}") String strategyName) {
@@ -163,8 +158,7 @@ public class AgentOrchestrator {
         this.bulkheadRegistry = bulkheadRegistry;
         this.executionGateway = executionGateway;
         this.gatewayRegistry = gatewayRegistry;
-        this.orderRepository = orderRepository;
-        this.performanceTrackingService = performanceTrackingService;
+        this.tradeExecutionService = tradeExecutionService;
         this.eventPublisher = eventPublisher;
         this.tradingMetrics = tradingMetrics;
         this.agentScheduler = Schedulers.boundedElastic();
@@ -429,79 +423,7 @@ public class AgentOrchestrator {
                                             : gateway.execute(decision, event.symbol(), price);
                                     logger.info("[AgenticAgent] {} execution: {} success={} fill={}",
                                             agent.getId(), result.action(), result.success(), result.fillPrice());
-
-                                    // P2: Persist the order history to the database
-                                    try {
-                                        double quantity = result.fillQuantity() > 0 ? result.fillQuantity() : 
-                                                          (decision.quantity() != null ? decision.quantity() : 1.0);
-
-                                        OrderEntity.Builder entityBuilder = OrderEntity.builder()
-                                                .id(UUID.randomUUID().toString())
-                                                .agentId(agent.getId())
-                                                .symbol(event.symbol())
-                                                .direction(decision.action() == Action.BUY ? OrderEntity.Direction.LONG : OrderEntity.Direction.SHORT)
-                                                .price(price)
-                                                .quantity(quantity)
-                                                .createdAt(Instant.now());
-
-                                        if (result.success() && result.action() != ExecutionResult.ExecutionAction.NOOP) {
-                                            entityBuilder.status(OrderEntity.Status.EXECUTED)
-                                                         .executedAt(Instant.now())
-                                                         .exchangeOrderId(result.exchangeOrderId())
-                                                         .realizedPnl(result.realizedPnl());
-                                            // Record Micrometer entry metric
-                                            if (tradingMetrics != null && (
-                                                    result.action() == ExecutionResult.ExecutionAction.ENTER_LONG
-                                                    || result.action() == ExecutionResult.ExecutionAction.ENTER_SHORT)) {
-                                                tradingMetrics.recordOrderEntered(event.symbol(),
-                                                        result.action() == ExecutionResult.ExecutionAction.ENTER_LONG ? "LONG" : "SHORT");
-                                            }
-                                        } else {
-                                            entityBuilder.status(OrderEntity.Status.FAILED)
-                                                         .failureReason(result.reason());
-                                        }
-                                        
-                                        OrderEntity entity = entityBuilder.build();
-                                        orderRepository.save(entity);
-                                        
-                                        // P3: Track performance metrics
-                                        performanceTrackingService.recordExecution(agent.getId(), result);
-
-                                        // P4: Publish async self-reflection event for exit trades
-                                        if (result.success() && (
-                                                result.action() == ExecutionResult.ExecutionAction.EXIT_LONG ||
-                                                result.action() == ExecutionResult.ExecutionAction.EXIT_SHORT)) {
-                                            // Record Micrometer exit metric
-                                            if (tradingMetrics != null) {
-                                                tradingMetrics.recordOrderExited(event.symbol(),
-                                                        result.action() == ExecutionResult.ExecutionAction.EXIT_LONG ? "LONG" : "SHORT");
-                                            }
-                                            double exitPrice = result.fillPrice();
-                                            double pnlPercent = result.realizedPnl();
-                                            // Approximate entry price: exit / (1 + pnl%)
-                                            double impliedEntry = pnlPercent != 0
-                                                    ? exitPrice / (1.0 + pnlPercent / 100.0)
-                                                    : exitPrice;
-                                            tradingbot.agent.infrastructure.persistence.TradeMemoryEntity.Direction memDir =
-                                                    result.action() == ExecutionResult.ExecutionAction.EXIT_LONG
-                                                    ? tradingbot.agent.infrastructure.persistence.TradeMemoryEntity.Direction.LONG
-                                                    : tradingbot.agent.infrastructure.persistence.TradeMemoryEntity.Direction.SHORT;
-                                            if (eventPublisher != null) {
-                                                eventPublisher.publishEvent(new tradingbot.agent.application.event.TradeCompletedEvent(
-                                                        agent.getId(),
-                                                        event.symbol(),
-                                                        memDir,
-                                                        impliedEntry,
-                                                        exitPrice,
-                                                        pnlPercent,
-                                                        decision.reasoning()
-                                                ));
-                                                logger.info("[P4] TradeCompletedEvent published for agent {} on {}", agent.getId(), event.symbol());
-                                            }
-                                        }
-                                    } catch (Exception dbEx) {
-                                        logger.error("[AgenticAgent] {} failed to persist order history or performance: {}", agent.getId(), dbEx.getMessage(), dbEx);
-                                    }
+                                    tradeExecutionService.record(agent.getId(), event.symbol(), decision, result);
                                 } catch (Exception exGw) {
                                     logger.error("[AgenticAgent] {} gateway error: {}",
                                             agent.getId(), exGw.getMessage(), exGw);

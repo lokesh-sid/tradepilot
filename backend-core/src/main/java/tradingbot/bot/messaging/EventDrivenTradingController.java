@@ -46,10 +46,10 @@ public class EventDrivenTradingController {
     private static final String PUBLISHED = "published";
     
     private final EventPublisher eventPublisher;
-    private final TradeExecutionService tradeExecutionService;
+    private final EventDrivenTradeExecutionService tradeExecutionService;
     
     public EventDrivenTradingController(EventPublisher eventPublisher,
-                                      TradeExecutionService tradeExecutionService) {
+                                      EventDrivenTradeExecutionService tradeExecutionService) {
         this.eventPublisher = eventPublisher;
         this.tradeExecutionService = tradeExecutionService;
     }

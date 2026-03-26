@@ -230,54 +230,42 @@ class TradingBotControllerIntegrationTest extends AbstractIntegrationTest {
     // ========== CONFIGURATION TESTS ==========
 
     @Test
-    @DisplayName("Should update bot leverage and return 200")
-    void updateLeverage_validValue_shouldReturn200() throws Exception {
-        // Create bot
+    @DisplayName("Should return 422 when updating leverage on TechnicalTradingAgent (capability not supported)")
+    void updateLeverage_unsupportedCapability_shouldReturn422() throws Exception {
         MvcResult createResult = performPost(API_V1_BOTS, null)
                 .andExpect(status().isCreated())
                 .andReturn();
         String botId = extractBotId(createResult);
 
-        // Update leverage
         LeverageUpdateRequest request = new LeverageUpdateRequest(20.0);
         performPost(API_V1_BOTS + "/" + botId + "/leverage", request)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value(containsString("updated to 20")))
-                .andExpect(jsonPath("$.newLeverage").value(20.0));
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
-    @DisplayName("Should enable sentiment analysis and return 200")
-    void updateSentiment_enableTrue_shouldReturn200() throws Exception {
-        // Create bot
+    @DisplayName("Should return 422 when enabling sentiment on TechnicalTradingAgent (capability not supported)")
+    void updateSentiment_enableTrue_unsupportedCapability_shouldReturn422() throws Exception {
         MvcResult createResult = performPost(API_V1_BOTS, null)
                 .andExpect(status().isCreated())
                 .andReturn();
         String botId = extractBotId(createResult);
 
-        // Enable sentiment
         SentimentUpdateRequest request = new SentimentUpdateRequest(true);
         performPost(API_V1_BOTS + "/" + botId + "/sentiment", request)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value(containsString("enabled")))
-                .andExpect(jsonPath("$.sentimentEnabled").value(true));
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
-    @DisplayName("Should disable sentiment analysis and return 200")
-    void updateSentiment_enableFalse_shouldReturn200() throws Exception {
-        // Create bot
+    @DisplayName("Should return 422 when disabling sentiment on TechnicalTradingAgent (capability not supported)")
+    void updateSentiment_enableFalse_unsupportedCapability_shouldReturn422() throws Exception {
         MvcResult createResult = performPost(API_V1_BOTS, null)
                 .andExpect(status().isCreated())
                 .andReturn();
         String botId = extractBotId(createResult);
 
-        // Disable sentiment
         SentimentUpdateRequest request = new SentimentUpdateRequest(false);
         performPost(API_V1_BOTS + "/" + botId + "/sentiment", request)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value(containsString("disabled")))
-                .andExpect(jsonPath("$.sentimentEnabled").value(false));
+                .andExpect(status().isUnprocessableEntity());
     }
 
     // ========== STATUS AND QUERY TESTS ==========
@@ -296,8 +284,6 @@ class TradingBotControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.running").exists())
                 .andExpect(jsonPath("$.symbol").exists())
-                .andExpect(jsonPath("$.leverage").exists())
-                .andExpect(jsonPath("$.statusMessage").exists())
                 .andExpect(jsonPath("$.running").value(false));
     }
 
