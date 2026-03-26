@@ -4,15 +4,15 @@ WORKDIR /app
 
 COPY build.gradle settings.gradle gradle.properties ./
 COPY gradle ./gradle
-COPY src ./src
+COPY backend-core ./backend-core
 
-RUN gradle clean build -x test
+RUN gradle :backend-core:bootJar -x test
 
 FROM amazoncorretto:21-alpine-jdk
 
 WORKDIR /app
 
-COPY --from=build /app/build/libs/*.jar app.jar
+COPY --from=build /app/backend-core/build/libs/*.jar app.jar
 
 EXPOSE 8081
 

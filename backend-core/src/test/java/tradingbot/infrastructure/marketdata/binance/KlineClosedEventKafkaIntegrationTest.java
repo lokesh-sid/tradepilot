@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -95,7 +96,7 @@ class KlineClosedEventKafkaIntegrationTest {
 
     @Test
     @DisplayName("AgentOrchestrator.onKlineClosedEvent is invoked when a kline-closed message is published")
-    void onKlineClosedEvent_isInvokedWhenMessagePublished() {
+    void onKlineClosedEvent_isInvokedWhenMessagePublished() throws Exception {
         KlineClosedEvent event = new KlineClosedEvent(
                 "BINANCE",
                 "BTCUSDT",
@@ -108,7 +109,9 @@ class KlineClosedEventKafkaIntegrationTest {
                 Instant.now().minusSeconds(60),
                 Instant.now());
 
-        kafkaTemplate.send("kline-closed.BTCUSDT", "BTCUSDT", event);
+        // Block until Kafka acknowledges the message so that auto.offset.reset=earliest
+        // is guaranteed to cover it even if the consumer polls slightly later.
+        kafkaTemplate.send("kline-closed.BTCUSDT", "BTCUSDT", event).get(10, TimeUnit.SECONDS);
 
         // Wait up to 10 s for the @KafkaListener to be invoked
         verify(agentOrchestrator, timeout(10_000)).onKlineClosedEvent(any(KlineClosedEvent.class));
@@ -149,6 +152,8 @@ class KlineClosedEventKafkaIntegrationTest {
                     env.getProperty("spring.kafka.bootstrap-servers"));
             props.put(ConsumerConfig.GROUP_ID_CONFIG, "agent-orchestrator-klines-test");
             props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+            // Speed up topic-pattern re-discovery for tests (default is 300 000 ms)
+            props.put(ConsumerConfig.METADATA_MAX_AGE_CONFIG, "100");
             props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                     org.apache.kafka.common.serialization.StringDeserializer.class);
             props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
