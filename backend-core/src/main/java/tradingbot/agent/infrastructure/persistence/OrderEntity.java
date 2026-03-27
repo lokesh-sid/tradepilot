@@ -22,37 +22,43 @@ import tradingbot.agent.api.dto.OrderResponse;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Entity
 @Table(name = "orders", indexes = {
-    @Index(name = "idx_orders_agent_id", columnList = "agent_id"),
+    @Index(name = "idx_orders_executor_id", columnList = "executor_id"),
     @Index(name = "idx_orders_symbol", columnList = "symbol"),
     @Index(name = "idx_orders_status", columnList = "status"),
     @Index(name = "idx_orders_created_at", columnList = "created_at")
 })
 public class OrderEntity {
-        public OrderResponse toOrderResponse() {
-            return new OrderResponse(
-                this.id,
-                this.agentId,
-                this.symbol,
-                this.direction != null ? this.direction.name() : null,
-                this.price,
-                this.quantity,
-                this.stopLoss,
-                this.takeProfit,
-                this.leverage,
-                this.status != null ? this.status.name() : null,
-                this.createdAt,
-                this.executedAt,
-                this.exchangeOrderId,
-                this.failureReason
-            );
-        }
-    
+
+    public OrderResponse toOrderResponse() {
+        return new OrderResponse(
+            this.id,
+            this.executorId,
+            this.symbol,
+            this.direction != null ? this.direction.name() : null,
+            this.price,
+            this.quantity,
+            this.stopLoss,
+            this.takeProfit,
+            this.leverage,
+            this.status != null ? this.status.name() : null,
+            this.createdAt,
+            this.executedAt,
+            this.exchangeOrderId,
+            this.failureReason
+        );
+    }
+
     @Id
     private String id;
 
     @NotBlank
-    @Column(name = "agent_id", nullable = false)
-    private String agentId;
+    @Column(name = "executor_id", nullable = false)
+    private String executorId;
+
+    @NotNull
+    @Column(name = "executor_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ExecutorType executorType;
 
     @NotBlank
     @Column(nullable = false)
@@ -70,31 +76,45 @@ public class OrderEntity {
     @Positive
     @Column(nullable = false)
     private double quantity;
-    
+
     @Column(name = "stop_loss")
     private Double stopLoss;
-    
+
     @Column(name = "take_profit")
     private Double takeProfit;
-    
+
     @Column
     private Integer leverage;
-    
+
     @NotNull
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Status status;
-    
+
+    @NotNull
+    @Column(name = "order_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private OrderType orderType;
+
+    @Column(name = "limit_price")
+    private Double limitPrice;
+
+    @Column(name = "filled_quantity")
+    private Double filledQuantity;
+
+    @Column(name = "remaining_quantity")
+    private Double remainingQuantity;
+
     @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-    
+
     @Column(name = "executed_at")
     private Instant executedAt;
-    
+
     @Column(name = "exchange_order_id")
     private String exchangeOrderId;
-    
+
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
@@ -103,63 +123,62 @@ public class OrderEntity {
 
     // Constructors
     public OrderEntity() {}
-    
-    public OrderEntity(String id, String agentId, String symbol, Direction direction,
-                      double price, double quantity, Double stopLoss, Double takeProfit,
-                      Integer leverage, Status status, Instant createdAt) {
-        this.id = id;
-        this.agentId = agentId;
-        this.symbol = symbol;
-        this.direction = direction;
-        this.price = price;
-        this.quantity = quantity;
-        this.stopLoss = stopLoss;
-        this.takeProfit = takeProfit;
-        this.leverage = leverage;
-        this.status = status;
-        this.createdAt = createdAt;
-    }
-    
+
     // Getters and setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
-    
-    public String getAgentId() { return agentId; }
-    public void setAgentId(String agentId) { this.agentId = agentId; }
-    
+
+    public String getExecutorId() { return executorId; }
+    public void setExecutorId(String executorId) { this.executorId = executorId; }
+
+    public ExecutorType getExecutorType() { return executorType; }
+    public void setExecutorType(ExecutorType executorType) { this.executorType = executorType; }
+
     public String getSymbol() { return symbol; }
     public void setSymbol(String symbol) { this.symbol = symbol; }
-    
+
     public Direction getDirection() { return direction; }
     public void setDirection(Direction direction) { this.direction = direction; }
-    
+
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
-    
+
     public double getQuantity() { return quantity; }
     public void setQuantity(double quantity) { this.quantity = quantity; }
-    
+
     public Double getStopLoss() { return stopLoss; }
     public void setStopLoss(Double stopLoss) { this.stopLoss = stopLoss; }
-    
+
     public Double getTakeProfit() { return takeProfit; }
     public void setTakeProfit(Double takeProfit) { this.takeProfit = takeProfit; }
-    
+
     public Integer getLeverage() { return leverage; }
     public void setLeverage(Integer leverage) { this.leverage = leverage; }
-    
+
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
-    
+
+    public OrderType getOrderType() { return orderType; }
+    public void setOrderType(OrderType orderType) { this.orderType = orderType; }
+
+    public Double getLimitPrice() { return limitPrice; }
+    public void setLimitPrice(Double limitPrice) { this.limitPrice = limitPrice; }
+
+    public Double getFilledQuantity() { return filledQuantity; }
+    public void setFilledQuantity(Double filledQuantity) { this.filledQuantity = filledQuantity; }
+
+    public Double getRemainingQuantity() { return remainingQuantity; }
+    public void setRemainingQuantity(Double remainingQuantity) { this.remainingQuantity = remainingQuantity; }
+
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    
+
     public Instant getExecutedAt() { return executedAt; }
     public void setExecutedAt(Instant executedAt) { this.executedAt = executedAt; }
-    
+
     public String getExchangeOrderId() { return exchangeOrderId; }
     public void setExchangeOrderId(String exchangeOrderId) { this.exchangeOrderId = exchangeOrderId; }
-    
+
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
 
@@ -172,7 +191,8 @@ public class OrderEntity {
 
     public static class Builder {
         private String id;
-        private String agentId;
+        private String executorId;
+        private ExecutorType executorType;
         private String symbol;
         private Direction direction;
         private double price;
@@ -181,6 +201,10 @@ public class OrderEntity {
         private Double takeProfit;
         private Integer leverage;
         private Status status;
+        private OrderType orderType = OrderType.MARKET;
+        private Double limitPrice;
+        private Double filledQuantity;
+        private Double remainingQuantity;
         private Instant createdAt;
         private Instant executedAt;
         private String exchangeOrderId;
@@ -190,7 +214,8 @@ public class OrderEntity {
         private Builder() {}
 
         public Builder id(String id) { this.id = id; return this; }
-        public Builder agentId(String agentId) { this.agentId = agentId; return this; }
+        public Builder executorId(String executorId) { this.executorId = executorId; return this; }
+        public Builder executorType(ExecutorType executorType) { this.executorType = executorType; return this; }
         public Builder symbol(String symbol) { this.symbol = symbol; return this; }
         public Builder direction(Direction direction) { this.direction = direction; return this; }
         public Builder price(double price) { this.price = price; return this; }
@@ -199,6 +224,10 @@ public class OrderEntity {
         public Builder takeProfit(Double takeProfit) { this.takeProfit = takeProfit; return this; }
         public Builder leverage(Integer leverage) { this.leverage = leverage; return this; }
         public Builder status(Status status) { this.status = status; return this; }
+        public Builder orderType(OrderType orderType) { this.orderType = orderType; return this; }
+        public Builder limitPrice(Double limitPrice) { this.limitPrice = limitPrice; return this; }
+        public Builder filledQuantity(Double filledQuantity) { this.filledQuantity = filledQuantity; return this; }
+        public Builder remainingQuantity(Double remainingQuantity) { this.remainingQuantity = remainingQuantity; return this; }
         public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public Builder executedAt(Instant executedAt) { this.executedAt = executedAt; return this; }
         public Builder exchangeOrderId(String exchangeOrderId) { this.exchangeOrderId = exchangeOrderId; return this; }
@@ -206,33 +235,46 @@ public class OrderEntity {
         public Builder realizedPnl(Double realizedPnl) { this.realizedPnl = realizedPnl; return this; }
 
         public OrderEntity build() {
-              OrderEntity order = new OrderEntity();
-              order.setId(id);
-              order.setAgentId(agentId);
-              order.setSymbol(symbol);
-              order.setDirection(direction);
-              order.setPrice(price);
-              order.setQuantity(quantity);
-              order.setStopLoss(stopLoss);
-              order.setTakeProfit(takeProfit);
-              order.setLeverage(leverage);
-              order.setStatus(status);
-              order.setCreatedAt(createdAt != null ? createdAt : Instant.now());
-              order.setExecutedAt(executedAt);
-              order.setExchangeOrderId(exchangeOrderId);
-              order.setFailureReason(failureReason);
-              order.setRealizedPnl(realizedPnl);
-              return order;
+            OrderEntity order = new OrderEntity();
+            order.setId(id);
+            order.setExecutorId(executorId);
+            order.setExecutorType(executorType != null ? executorType : ExecutorType.AGENT);
+            order.setSymbol(symbol);
+            order.setDirection(direction);
+            order.setPrice(price);
+            order.setQuantity(quantity);
+            order.setStopLoss(stopLoss);
+            order.setTakeProfit(takeProfit);
+            order.setLeverage(leverage);
+            order.setStatus(status);
+            order.setOrderType(orderType != null ? orderType : OrderType.MARKET);
+            order.setLimitPrice(limitPrice);
+            order.setFilledQuantity(filledQuantity);
+            order.setRemainingQuantity(remainingQuantity);
+            order.setCreatedAt(createdAt != null ? createdAt : Instant.now());
+            order.setExecutedAt(executedAt);
+            order.setExchangeOrderId(exchangeOrderId);
+            order.setFailureReason(failureReason);
+            order.setRealizedPnl(realizedPnl);
+            return order;
         }
     }
-    
+
     // Enums
+    public enum ExecutorType {
+        AGENT, BOT
+    }
+
     public enum Direction {
         LONG, SHORT
     }
-    
+
+    public enum OrderType {
+        MARKET, LIMIT
+    }
+
     public enum Status {
-        PENDING, SUBMITTED, EXECUTED, FAILED, CANCELLED
+        PENDING, SUBMITTED, OPEN, PARTIALLY_FILLED, EXECUTED, FAILED, CANCELLED
     }
 
     @Override
@@ -240,7 +282,8 @@ public class OrderEntity {
         StringBuilder sb = new StringBuilder();
         sb.append("OrderEntity{");
         sb.append("id='").append(id).append("', ");
-        sb.append("agentId='").append(agentId).append("', ");
+        sb.append("executorId='").append(executorId).append("', ");
+        sb.append("executorType=").append(executorType).append(", ");
         sb.append("symbol='").append(symbol).append("', ");
         sb.append("direction=").append(direction != null ? direction.name() : null).append(", ");
         sb.append("price=").append(price).append(", ");
@@ -249,6 +292,7 @@ public class OrderEntity {
         sb.append("takeProfit=").append(takeProfit).append(", ");
         sb.append("leverage=").append(leverage).append(", ");
         sb.append("status=").append(status != null ? status.name() : null).append(", ");
+        sb.append("orderType=").append(orderType != null ? orderType.name() : null).append(", ");
         sb.append("createdAt=").append(createdAt).append(", ");
         sb.append("executedAt=").append(executedAt).append(", ");
         sb.append("exchangeOrderId='").append(exchangeOrderId).append("', ");

@@ -25,7 +25,7 @@ public class OrderServiceTest {
     @Test
     void testCreateOrderGeneratesCompositeId() {
         OrderEntity order = OrderEntity.builder()
-            .agentId("AGENT1234")
+            .executorId("AGENT1234")
             .symbol("BTCUSDT")
             .direction(OrderEntity.Direction.LONG)
             .price(50000.0)

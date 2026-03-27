@@ -150,7 +150,7 @@ public class OrderPlacementService {
         // Create order
         Order order = Order.builder()
             .id(UUID.randomUUID().toString())
-            .agentId(agent.getId().toString())
+            .executorId(agent.getId().toString())
             .symbol(perception.getSymbol())
             .direction(details.direction())
             .price(fillPrice)
@@ -337,7 +337,7 @@ public class OrderPlacementService {
             
             // Create position record for tracking
             Position position = positionMonitoringService.createPosition(
-                order.getAgentId(),
+                order.getExecutorId(),
                 order.getSymbol(),
                 order.getDirection(),
                 orderResult.getAvgFillPrice(), // Use actual fill price
@@ -412,19 +412,19 @@ public class OrderPlacementService {
      */
     private void persistOrder(Order order) {
         try {
-            OrderEntity entity = new OrderEntity(
-                order.getId(),
-                order.getAgentId(),
-                order.getSymbol(),
-                OrderEntity.Direction.valueOf(order.getDirection().name()),
-                order.getPrice(),
-                order.getQuantity(),
-                order.getStopLoss(),
-                order.getTakeProfit(),
-                order.getLeverage(),
-                OrderEntity.Status.valueOf(order.getStatus().name()),
-                order.getCreatedAt()
-            );
+            OrderEntity entity = OrderEntity.builder()
+                .id(order.getId())
+                .executorId(order.getExecutorId())
+                .symbol(order.getSymbol())
+                .direction(OrderEntity.Direction.valueOf(order.getDirection().name()))
+                .price(order.getPrice())
+                .quantity(order.getQuantity())
+                .stopLoss(order.getStopLoss())
+                .takeProfit(order.getTakeProfit())
+                .leverage(order.getLeverage())
+                .status(OrderEntity.Status.valueOf(order.getStatus().name()))
+                .createdAt(order.getCreatedAt())
+                .build();
             entity.setExecutedAt(order.getExecutedAt());
             entity.setExchangeOrderId(order.getExchangeOrderId());
             entity.setFailureReason(order.getFailureReason());
@@ -443,7 +443,7 @@ public class OrderPlacementService {
         try {
             // Create trade execution event
             var event = new TradeExecutionEvent(
-                order.getAgentId(), // botId
+                order.getExecutorId(), // botId
                 order.getId(), // orderId
                 order.getSymbol()
             );

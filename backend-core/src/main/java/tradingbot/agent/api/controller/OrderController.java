@@ -88,13 +88,13 @@ public class OrderController {
     }
 
     /**
-     * Fetch orders for a given agent (or all orders if agentId not provided)
+     * Fetch orders for a given agent (or all orders if executorId not provided)
      */
     @GetMapping
     public ResponseEntity<List<OrderResponse>> getOrders(
-            @RequestParam(required = false) String agentId) {
-        log.info("Received GET /api/v1/orders with agentId={}", agentId);
-        List<OrderResponse> orders = orderService.getOrders(agentId);
+            @RequestParam(required = false) String executorId) {
+        log.info("Received GET /api/v1/orders with executorId={}", executorId);
+        List<OrderResponse> orders = orderService.getOrders(executorId);
         log.info("Response for GET /api/v1/orders: {} orders", orders.size());
         return ResponseEntity.ok(orders);
     }

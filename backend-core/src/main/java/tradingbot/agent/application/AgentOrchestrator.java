@@ -35,6 +35,7 @@ import tradingbot.agent.application.strategy.AgentStrategy;
 import tradingbot.agent.application.strategy.LangChain4jStrategy;
 import tradingbot.agent.config.OrderExecutionGatewayRegistry;
 import tradingbot.agent.domain.execution.ExecutionResult;
+import tradingbot.agent.domain.execution.ExecutorRef;
 import tradingbot.agent.domain.execution.OrderExecutionGateway;
 import tradingbot.agent.domain.model.Agent;
 import tradingbot.agent.domain.model.AgentDecision.Action;
@@ -423,7 +424,7 @@ public class AgentOrchestrator {
                                             : gateway.execute(decision, event.symbol(), price);
                                     logger.info("[AgenticAgent] {} execution: {} success={} fill={}",
                                             agent.getId(), result.action(), result.success(), result.fillPrice());
-                                    tradeExecutionService.record(agent.getId(), event.symbol(), decision, result);
+                                    tradeExecutionService.record(new ExecutorRef.AgentRef(agent.getId()), event.symbol(), decision, result);
                                 } catch (Exception exGw) {
                                     logger.error("[AgenticAgent] {} gateway error: {}",
                                             agent.getId(), exGw.getMessage(), exGw);

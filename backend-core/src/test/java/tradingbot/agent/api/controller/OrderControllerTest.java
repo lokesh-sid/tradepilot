@@ -26,7 +26,7 @@ public class OrderControllerTest {
     @Test
     void testCreateOrderViaApi() {
         OrderEntity order = OrderEntity.builder()
-            .agentId("AGENT1234")
+            .executorId("AGENT1234")
             .symbol("BTCUSDT")
             .direction(OrderEntity.Direction.LONG)
             .price(50000.0)
@@ -37,7 +37,7 @@ public class OrderControllerTest {
 
         OrderResponse mockResponse = new OrderResponse();
         mockResponse.id = "AGENT1234-20260319T153045Z-1a2b3c4d";
-        mockResponse.agentId = "AGENT1234";
+        mockResponse.executorId = "AGENT1234";
         mockResponse.symbol = "BTCUSDT";
         mockResponse.direction = "LONG";
         mockResponse.price = 50000.0;

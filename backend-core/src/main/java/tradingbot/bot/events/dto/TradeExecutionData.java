@@ -10,8 +10,8 @@ public class TradeExecutionData {
     @JsonProperty("orderId")
     private String orderId;
     
-    @JsonProperty("agentId")
-    private String agentId;
+    @JsonProperty("executorId")
+    private String executorId;
     
     @JsonProperty("symbol")
     private String symbol;
@@ -42,12 +42,12 @@ public class TradeExecutionData {
         this.orderId = orderId;
     }
     
-    public String getAgentId() {
-        return agentId;
+    public String getExecutorId() {
+        return executorId;
     }
     
-    public void setAgentId(String agentId) {
-        this.agentId = agentId;
+    public void setExecutorId(String executorId) {
+        this.executorId = executorId;
     }
     
     public String getSymbol() {
@@ -110,7 +110,7 @@ public class TradeExecutionData {
     public String toString() {
         return "TradeExecutionData{" +
                 "orderId='" + orderId + '\'' +
-                ", agentId='" + agentId + '\'' +
+                ", executorId='" + executorId + '\'' +
                 ", symbol='" + symbol + '\'' +
                 ", side='" + side + '\'' +
                 ", executedQuantity=" + executedQuantity +

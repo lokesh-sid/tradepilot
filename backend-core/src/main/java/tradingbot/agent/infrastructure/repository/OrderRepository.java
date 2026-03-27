@@ -19,7 +19,7 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
     /**
      * Find all orders for a specific agent
      */
-    List<OrderEntity> findByAgentId(String agentId);
+    List<OrderEntity> findByExecutorId(String executorId);
     
     /**
      * Find all orders for a specific symbol
@@ -29,7 +29,7 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
     /**
      * Find all orders for an agent on a specific symbol
      */
-    List<OrderEntity> findByAgentIdAndSymbol(String agentId, String symbol);
+    List<OrderEntity> findByExecutorIdAndSymbol(String executorId, String symbol);
     
     /**
      * Find all orders with a specific status
@@ -39,7 +39,7 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
     /**
      * Find all orders for an agent with a specific status
      */
-    List<OrderEntity> findByAgentIdAndStatus(String agentId, OrderEntity.Status status);
+    List<OrderEntity> findByExecutorIdAndStatus(String executorId, OrderEntity.Status status);
     
     /**
      * Find orders created after a specific timestamp
@@ -49,22 +49,22 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
     /**
      * Find recent orders for an agent (last N days)
      */
-    @Query("SELECT o FROM OrderEntity o WHERE o.agentId = :agentId " +
+    @Query("SELECT o FROM OrderEntity o WHERE o.executorId = :executorId " +
            "AND o.createdAt >= :since ORDER BY o.createdAt DESC")
     List<OrderEntity> findRecentOrdersByAgent(
-        @Param("agentId") String agentId,
+        @Param("executorId") String executorId,
         @Param("since") Instant since
     );
     
     /**
      * Count orders by status for an agent
      */
-    long countByAgentIdAndStatus(String agentId, OrderEntity.Status status);
+    long countByExecutorIdAndStatus(String executorId, OrderEntity.Status status);
     
     /**
      * Find all executed orders for an agent
      */
-    @Query("SELECT o FROM OrderEntity o WHERE o.agentId = :agentId " +
+    @Query("SELECT o FROM OrderEntity o WHERE o.executorId = :executorId " +
            "AND o.status = 'EXECUTED' ORDER BY o.executedAt DESC")
-    List<OrderEntity> findExecutedOrdersByAgent(@Param("agentId") String agentId);
+    List<OrderEntity> findExecutedOrdersByAgent(@Param("executorId") String executorId);
 }

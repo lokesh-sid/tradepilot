@@ -13,7 +13,7 @@ import java.util.Objects;
 public class Order {
     
     private final String id;
-    private final String agentId;
+    private final String executorId;
     private final String symbol;
     private final TradeDirection direction;
     private final double price;
@@ -29,7 +29,7 @@ public class Order {
     
     private Order(Builder builder) {
         this.id = builder.id;
-        this.agentId = builder.agentId;
+        this.executorId = builder.executorId;
         this.symbol = builder.symbol;
         this.direction = builder.direction;
         this.price = builder.price;
@@ -50,7 +50,7 @@ public class Order {
     
     // Getters
     public String getId() { return id; }
-    public String getAgentId() { return agentId; }
+    public String getExecutorId() { return executorId; }
     public String getSymbol() { return symbol; }
     public TradeDirection getDirection() { return direction; }
     public double getPrice() { return price; }
@@ -152,7 +152,7 @@ public class Order {
      */
     public static class Builder {
         private String id;
-        private String agentId;
+        private String executorId;
         private String symbol;
         private TradeDirection direction;
         private double price;
@@ -171,8 +171,8 @@ public class Order {
             return this;
         }
         
-        public Builder agentId(String agentId) {
-            this.agentId = agentId;
+        public Builder executorId(String executorId) {
+            this.executorId = executorId;
             return this;
         }
         
@@ -238,7 +238,7 @@ public class Order {
         
         public Order build() {
             Objects.requireNonNull(id, "id must not be null");
-            Objects.requireNonNull(agentId, "agentId must not be null");
+            Objects.requireNonNull(executorId, "executorId must not be null");
             Objects.requireNonNull(symbol, "symbol must not be null");
             Objects.requireNonNull(direction, "direction must not be null");
             

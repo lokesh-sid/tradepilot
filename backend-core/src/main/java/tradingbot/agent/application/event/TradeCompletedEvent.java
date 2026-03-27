@@ -14,7 +14,7 @@ import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
  */
 public class TradeCompletedEvent {
 
-    private final String agentId;
+    private final String executorId;
     private final String symbol;
     private final TradeMemoryEntity.Direction direction;
     private final double entryPrice;
@@ -23,14 +23,14 @@ public class TradeCompletedEvent {
     private final String originalReasoning;
 
     public TradeCompletedEvent(
-            String agentId,
+            String executorId,
             String symbol,
             TradeMemoryEntity.Direction direction,
             double entryPrice,
             double exitPrice,
             double realizedPnlPercent,
             String originalReasoning) {
-        this.agentId = agentId;
+        this.executorId = executorId;
         this.symbol = symbol;
         this.direction = direction;
         this.entryPrice = entryPrice;
@@ -39,8 +39,8 @@ public class TradeCompletedEvent {
         this.originalReasoning = originalReasoning;
     }
 
-    public String getAgentId() {
-        return agentId;
+    public String getExecutorId() {
+        return executorId;
     }
 
     public String getSymbol() {

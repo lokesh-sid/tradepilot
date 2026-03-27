@@ -4,7 +4,7 @@ import java.time.Instant;
 
 public class OrderResponse {
     public String id;
-    public String agentId;
+    public String executorId;
     public String symbol;
     public String direction;
     public double price;
@@ -22,7 +22,7 @@ public class OrderResponse {
 
     public OrderResponse(
         String id,
-        String agentId,
+        String executorId,
         String symbol,
         String direction,
         double price,
@@ -37,7 +37,7 @@ public class OrderResponse {
         String failureReason
     ) {
         this.id = id;
-        this.agentId = agentId;
+        this.executorId = executorId;
         this.symbol = symbol;
         this.direction = direction;
         this.price = price;
@@ -56,7 +56,7 @@ public class OrderResponse {
         StringBuilder sb = new StringBuilder();
         sb.append("OrderResponse{");
         sb.append("id='").append(id).append("', ");
-        sb.append("agentId='").append(agentId).append("', ");
+        sb.append("executorId='").append(executorId).append("', ");
         sb.append("symbol='").append(symbol).append("', ");
         sb.append("direction='").append(direction).append("', ");
         sb.append("price=").append(price).append(", ");

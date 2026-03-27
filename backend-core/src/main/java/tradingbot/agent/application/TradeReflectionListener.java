@@ -49,7 +49,7 @@ public class TradeReflectionListener {
     @Async
     @EventListener
     public void onTradeCompleted(TradeCompletedEvent event) {
-        String agentId = event.getAgentId();
+        String agentId = event.getExecutorId();
         String symbol = event.getSymbol();
 
         logger.info("[Reflection] Starting post-trade self-reflection for agent {} on {} (PnL: {}%)",
@@ -101,7 +101,7 @@ public class TradeReflectionListener {
             );
         } catch (Exception e) {
             logger.warn("[Reflection] LLM lesson generation failed for agent {} on {}: {}",
-                    event.getAgentId(), event.getSymbol(), e.getMessage());
+                    event.getExecutorId(), event.getSymbol(), e.getMessage());
             // Fallback lesson when the LLM call fails (e.g. API down, rate-limit)
             return event.getRealizedPnlPercent() >= 0
                     ? "Trade closed in profit; review entry timing for future optimization."

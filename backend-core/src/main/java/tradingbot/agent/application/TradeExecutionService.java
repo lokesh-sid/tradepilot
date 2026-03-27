@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import tradingbot.agent.application.event.TradeCompletedEvent;
 import tradingbot.agent.domain.execution.ExecutionResult;
 import tradingbot.agent.domain.execution.ExecutionResult.ExecutionAction;
+import tradingbot.agent.domain.execution.ExecutorRef;
 import tradingbot.agent.domain.model.AgentDecision;
 import tradingbot.agent.infrastructure.persistence.OrderEntity;
 import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
@@ -36,9 +37,11 @@ import tradingbot.bot.metrics.TradingMetrics;
  * <p>All exceptions are caught and logged — a persistence or metrics failure must
  * never propagate back to the caller and cancel an already-filled position.
  *
- * <p>The {@code executorId} parameter accepts agent IDs today and bot IDs once
- * Phase 3 introduces the {@code bots} table. The underlying {@code orders} table
- * stores them in the same column, disambiguated by {@code executor_type} added in V11.
+ * <p>The {@code executor} parameter is an {@link ExecutorRef} — either an
+ * {@link ExecutorRef.AgentRef} (used today) or a {@link ExecutorRef.BotRef}
+ * (used by BotOrchestrator in Phase 6). The underlying {@code orders} table
+ * stores the executor ID and type via the {@code executor_id}/{@code executor_type}
+ * columns added in V11.
  */
 @Service
 public class TradeExecutionService {
@@ -67,34 +70,39 @@ public class TradeExecutionService {
      * tracking, records Micrometer counters, and publishes a {@link TradeCompletedEvent}
      * for exits.
      *
-     * @param executorId agent ID or (future) bot ID that produced the decision
-     * @param symbol     trading pair, e.g. {@code BTCUSDT}
-     * @param decision   the signal that triggered execution
-     * @param result     the gateway outcome
+     * @param executor the agent or bot that produced the decision
+     * @param symbol   trading pair, e.g. {@code BTCUSDT}
+     * @param decision the signal that triggered execution
+     * @param result   the gateway outcome
      */
-    public void record(String executorId, String symbol, AgentDecision decision, ExecutionResult result) {
+    public void record(ExecutorRef executor, String symbol, AgentDecision decision, ExecutionResult result) {
         try {
-            persistOrder(executorId, symbol, decision, result);
-            performanceTrackingService.recordExecution(executorId, result);
+            persistOrder(executor, symbol, decision, result);
+            performanceTrackingService.recordExecution(executor.executorId(), result);
             if (result.success() && result.action() != ExecutionAction.NOOP) {
                 recordMetrics(symbol, result.action());
                 if (isExit(result.action())) {
-                    publishTradeCompleted(executorId, symbol, decision, result);
+                    publishTradeCompleted(executor.executorId(), symbol, decision, result);
                 }
             }
         } catch (Exception e) {
             logger.error("[TradeExecutionService] Failed to record execution for {} on {}: {}",
-                    executorId, symbol, e.getMessage(), e);
+                    executor.executorId(), symbol, e.getMessage(), e);
         }
     }
 
-    private void persistOrder(String executorId, String symbol, AgentDecision decision, ExecutionResult result) {
+    private void persistOrder(ExecutorRef executor, String symbol, AgentDecision decision, ExecutionResult result) {
         double quantity = result.fillQuantity() > 0 ? result.fillQuantity()
                 : (decision.quantity() != null ? decision.quantity() : 1.0);
 
+        OrderEntity.ExecutorType executorType = executor instanceof ExecutorRef.BotRef
+                ? OrderEntity.ExecutorType.BOT
+                : OrderEntity.ExecutorType.AGENT;
+
         OrderEntity.Builder builder = OrderEntity.builder()
                 .id(UUID.randomUUID().toString())
-                .agentId(executorId)
+                .executorId(executor.executorId())
+                .executorType(executorType)
                 .symbol(symbol)
                 .direction(decision.action() == AgentDecision.Action.BUY
                         ? OrderEntity.Direction.LONG
@@ -128,7 +136,7 @@ public class TradeExecutionService {
     }
 
     private void publishTradeCompleted(String executorId, String symbol,
-                                       AgentDecision decision, ExecutionResult result) {
+                                        AgentDecision decision, ExecutionResult result) {
         double exitPrice = result.fillPrice();
         double pnlPercent = result.realizedPnl();
         // Approximate entry: exit / (1 + pnl%) — avoids storing entry price separately

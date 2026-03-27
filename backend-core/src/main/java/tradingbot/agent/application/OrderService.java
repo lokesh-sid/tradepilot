@@ -21,9 +21,9 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
-    public List<OrderResponse> getOrders(String agentId) {
-        List<OrderEntity> entities = (agentId != null && !agentId.isEmpty())
-            ? orderRepository.findByAgentId(agentId)
+    public List<OrderResponse> getOrders(String executorId) {
+        List<OrderEntity> entities = (executorId != null && !executorId.isEmpty())
+            ? orderRepository.findByExecutorId(executorId)
             : orderRepository.findAll();
         return entities.stream().map(OrderEntity::toOrderResponse).toList();
     }
@@ -35,8 +35,8 @@ public class OrderService {
     public OrderResponse createOrder(OrderEntity order) {
         // Build a new OrderEntity to ensure all required fields are set
         OrderEntity newOrder = OrderEntity.builder()
-            .id(order.getId() == null || order.getId().isBlank() ? OrderIdGenerator.forAgent(order.getAgentId()) : order.getId())
-            .agentId(order.getAgentId())
+            .id(order.getId() == null || order.getId().isBlank() ? OrderIdGenerator.forAgent(order.getExecutorId()) : order.getId())
+            .executorId(order.getExecutorId())
             .symbol(order.getSymbol())
             .direction(order.getDirection())
             .price(order.getPrice())
