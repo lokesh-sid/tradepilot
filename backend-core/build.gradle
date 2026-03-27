@@ -57,8 +57,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-    // Web3j for dYdX Authentication
+    // Web3j for dYdX Authentication and Hyperliquid EIP-712 signing
     implementation 'org.web3j:core:4.10.3'
+    // Msgpack serialization for Hyperliquid action hashing
+    implementation 'org.msgpack:msgpack-core:0.9.8'
     
     // Database
     implementation 'org.flywaydb:flyway-core'
