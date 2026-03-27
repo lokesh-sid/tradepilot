@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-import tradingbot.config.ContainerIntegrationTestConfig;
+import tradingbot.config.IntegrationTestConfig;
 
 /**
  * End-to-end integration test that validates the application against real
@@ -29,13 +29,13 @@ import tradingbot.config.ContainerIntegrationTestConfig;
  * </ul>
  */
 @SpringBootTest(
-    classes = ContainerIntegrationTestConfig.class,
+    classes = IntegrationTestConfig.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@ActiveProfiles("container-test")
+@ActiveProfiles("integration")
 @Tag("requires-docker")
 @DisplayName("Testcontainers + Micrometer E2E Integration Test")
-class PrometheusContainerIntegrationTest extends AbstractContainerIntegrationTest {
+class PrometheusIntegrationTest extends AbstractContainerSupport {
 
     @LocalServerPort
     private int port;

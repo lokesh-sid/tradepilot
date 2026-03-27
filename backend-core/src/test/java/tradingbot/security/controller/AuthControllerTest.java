@@ -26,7 +26,7 @@ import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
-import tradingbot.AbstractContainerIntegrationTest;
+import tradingbot.AbstractContainerSupport;
 import tradingbot.agent.infrastructure.llm.LLMProvider;
 import tradingbot.security.dto.LoginRequest;
 import tradingbot.security.dto.RefreshTokenRequest;
@@ -35,9 +35,9 @@ import tradingbot.security.dto.RegisterRequest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("container-test")
+@ActiveProfiles("integration")
 @DisplayName("AuthController Integration Tests (Testcontainers Postgres)")
-class AuthControllerTest extends AbstractContainerIntegrationTest {
+class AuthControllerTest extends AbstractContainerSupport {
 
     @MockitoBean
     private LLMProvider llmProvider;

@@ -65,17 +65,19 @@ import tradingbot.security.repository.UserRepository;
 /**
  * Spring test configuration for Testcontainers-based integration tests.
  *
- * <p>Mirrors {@link FuturesTradingBotIntegrationTestConfig} but intentionally omits
- * the {@code dataSource()} bean so that Spring Boot auto-configuration creates a
- * real {@link javax.sql.DataSource} from the PostgreSQL URL injected by
- * {@link tradingbot.AbstractContainerIntegrationTest#configureContainerProperties}.
+ * Spring test configuration for Testcontainers-based integration tests.
+ *
+ * <p>Intentionally omits the {@code dataSource()} bean so that Spring Boot
+ * auto-configuration creates a real {@link javax.sql.DataSource} from the
+ * PostgreSQL URL injected by
+ * {@link tradingbot.AbstractContainerSupport#configureContainerProperties}.
  *
  * <p>Kafka auto-configuration is also kept enabled so the real Kafka container
  * bootstrapped by Testcontainers is used.
  */
 @SpringBootConfiguration
 @TestPropertySource(
-    locations = "classpath:application-container-test.properties",
+    locations = "classpath:application-integration.properties",
     properties = {
         "management.endpoints.web.exposure.include=*",
         "management.endpoint.prometheus.enabled=true",
@@ -127,7 +129,7 @@ import tradingbot.security.repository.UserRepository;
     TradingEventEntity.class,
     AgentEntity.class
 })
-public class ContainerIntegrationTestConfig {
+public class IntegrationTestConfig {
 
     @Bean
     public tradingbot.agent.config.AgentProperties agentProperties() {
@@ -136,7 +138,7 @@ public class ContainerIntegrationTestConfig {
 
     /**
      * Builds a PostgreSQL datasource from properties injected by
-     * {@link tradingbot.AbstractContainerIntegrationTest#configureContainerProperties}.
+     * {@link tradingbot.AbstractContainerSupport#configureContainerProperties}.
      */
     @Bean
     @Primary

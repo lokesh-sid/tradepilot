@@ -30,7 +30,7 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Concrete subclasses need only to declare the {@code @SpringBootTest} annotation
  * (and any additional test-specific configuration) – the containers are managed here.
  */
-public abstract class AbstractContainerIntegrationTest extends AbstractHttpTest {
+public abstract class AbstractContainerSupport extends AbstractHttpTest {
 
     static final PostgreSQLContainer<?> postgres =
         new PostgreSQLContainer<>(DockerImageName.parse("postgres:16"))

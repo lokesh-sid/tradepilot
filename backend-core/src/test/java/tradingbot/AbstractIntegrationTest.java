@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 
-import tradingbot.config.ContainerIntegrationTestConfig;
+import tradingbot.config.IntegrationTestConfig;
 
 /**
  * Abstract base class for integration tests that test complete workflows
@@ -14,13 +14,12 @@ import tradingbot.config.ContainerIntegrationTestConfig;
  * Provides generic HTTP request utilities.
  */
 @SpringBootTest(
-    classes = ContainerIntegrationTestConfig.class,
+    classes = IntegrationTestConfig.class,
     webEnvironment = SpringBootTest.WebEnvironment.MOCK
 )
 @AutoConfigureMockMvc(addFilters = false)
 @WithMockUser(roles = "ADMIN")
-@ActiveProfiles("container-test")
-public abstract class AbstractIntegrationTest extends AbstractContainerIntegrationTest {
-    // Integration-specific setup inherited from AbstractHttpTest
-    // Container management and property injection are handled by AbstractContainerIntegrationTest
+@ActiveProfiles("integration")
+public abstract class AbstractIntegrationTest extends AbstractContainerSupport {
+    // Container management and property injection are handled by AbstractContainerSupport
 }
