@@ -1,6 +1,7 @@
 package tradingbot.infrastructure.marketdata.hyperliquid;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -72,9 +73,10 @@ class HyperliquidFuturesServiceTest {
         }
 
         @Test
-        void defaultsToOneMinute_forUnknownInput() {
-            assertThat(HyperliquidFuturesService.toResolution("unknown")).isEqualTo("1m");
-            assertThat(HyperliquidFuturesService.toResolution("99")).isEqualTo("1m");
+        void passesUnrecognisedInputThrough() {
+            // Unknown values are passed as-is; the API will reject them.
+            assertThat(HyperliquidFuturesService.toResolution("45m")).isEqualTo("45m");
+            assertThat(HyperliquidFuturesService.toResolution("unknown")).isEqualTo("unknown");
         }
     }
 
@@ -91,8 +93,16 @@ class HyperliquidFuturesServiceTest {
         }
 
         @Test
-        void defaultsToOneMinute_forUnknownResolution() {
-            assertThat(HyperliquidFuturesService.toIntervalMillis("bad")).isEqualTo(60_000L);
+        void throwsForUnrecognisedFormat() {
+            assertThatThrownBy(() -> HyperliquidFuturesService.toIntervalMillis("bad"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void handlesArbitraryValidResolutions() {
+            assertThat(HyperliquidFuturesService.toIntervalMillis("45m")).isEqualTo(2_700_000L);
+            assertThat(HyperliquidFuturesService.toIntervalMillis("24h")).isEqualTo(86_400_000L);
+            assertThat(HyperliquidFuturesService.toIntervalMillis("2d")).isEqualTo(172_800_000L);
         }
     }
 

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -251,47 +253,43 @@ public class HyperliquidFuturesService implements FuturesExchangeService {
         return symbol.endsWith("USDT") ? symbol.substring(0, symbol.length() - 4) : symbol;
     }
 
+    private static final Map<String, Long> UNIT_MILLIS = Map.of(
+            "m", 60_000L,
+            "h", 3_600_000L,
+            "d", 86_400_000L,
+            "w", 604_800_000L);
+
+    private static final Pattern RESOLUTION_PATTERN = Pattern.compile("^(\\d+)([mhdw])$");
+
     /**
-     * Maps common timeframe strings to Hyperliquid resolution strings.
-     * Accepts both bare numbers ("1", "5") and suffixed forms ("1m", "1h").
+     * Normalises common timeframe strings to Hyperliquid resolution strings.
+     * Accepts bare numbers (interpreted as minutes), shorthand letters ("d", "w"),
+     * and suffixed forms ("1m", "4h"). Invalid resolutions are rejected by the API.
      */
     static String toResolution(String timeframe) {
-        return switch (timeframe.toLowerCase()) {
-            case "1", "1m"   -> "1m";
-            case "3", "3m"   -> "3m";
-            case "5", "5m"   -> "5m";
-            case "15", "15m" -> "15m";
-            case "30", "30m" -> "30m";
-            case "60", "1h"  -> "1h";
-            case "120", "2h" -> "2h";
-            case "240", "4h" -> "4h";
-            case "480", "8h" -> "8h";
-            case "720", "12h"-> "12h";
-            case "d", "1d"   -> "1d";
-            case "3d"        -> "3d";
-            case "w", "1w"   -> "1w";
-            default          -> "1m";
-        };
+        return normaliseTimeframe(timeframe.toLowerCase());
     }
 
-    /** Returns the duration in milliseconds for a Hyperliquid resolution string. */
+    private static String normaliseTimeframe(String tf) {
+        if (tf.equals("d")) return "1d";
+        if (tf.equals("w")) return "1w";
+        if (tf.matches("\\d+")) {
+            long mins = Long.parseLong(tf);
+            if (mins % (7L * 24 * 60) == 0) return (mins / (7L * 24 * 60)) + "w";
+            if (mins % (24L * 60)     == 0) return (mins / (24L * 60))     + "d";
+            if (mins % 60             == 0) return (mins / 60)             + "h";
+            return mins + "m";
+        }
+        return tf;
+    }
+
+    /** Returns the duration in milliseconds for a resolution string (e.g. "1m", "4h", "1d"). */
     static long toIntervalMillis(String resolution) {
-        return switch (resolution) {
-            case "1m"  ->      60_000L;
-            case "3m"  ->     180_000L;
-            case "5m"  ->     300_000L;
-            case "15m" ->     900_000L;
-            case "30m" ->   1_800_000L;
-            case "1h"  ->   3_600_000L;
-            case "2h"  ->   7_200_000L;
-            case "4h"  ->  14_400_000L;
-            case "8h"  ->  28_800_000L;
-            case "12h" ->  43_200_000L;
-            case "1d"  ->  86_400_000L;
-            case "3d"  -> 259_200_000L;
-            case "1w"  -> 604_800_000L;
-            default    ->      60_000L;
-        };
+        Matcher m = RESOLUTION_PATTERN.matcher(resolution);
+        if (!m.matches()) {
+            throw new IllegalArgumentException("Unrecognised resolution format: " + resolution);
+        }
+        return Long.parseLong(m.group(1)) * UNIT_MILLIS.get(m.group(2));
     }
 
     private static int findCoinIndex(JsonNode universe, String coin) {
