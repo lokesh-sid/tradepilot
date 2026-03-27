@@ -51,18 +51,20 @@ public class CachedGrokService implements LLMProvider {
     private static final Logger logger = LoggerFactory.getLogger(CachedGrokService.class);
     private static final String REDIS_KEY_PREFIX = "llm:cache:";
 
-    private final GrokClient delegate;   // nullable — absent when grok is disabled (offline backtest)
+    private final LLMProvider delegate;  // nullable — absent when all providers are disabled (offline backtest)
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
     private final Path fileCacheDir;
     private final long redisTtlHours;
 
     public CachedGrokService(
-            Optional<GrokClient> delegate,
+            Optional<ClaudeClient> claudeDelegate,
+            Optional<GrokClient> grokDelegate,
             RedisTemplate<String, String> redisTemplate,
             @Value("${agent.llm.cache.file-dir:${java.io.tmpdir}/trading-bot-llm-cache}") String fileCacheDir,
             @Value("${agent.llm.cache.redis-ttl-hours:720}") long redisTtlHours) {
-        this.delegate = delegate.orElse(null);
+        // Prefer Claude over Grok when both could theoretically be present
+        this.delegate = claudeDelegate.<LLMProvider>map(c -> c).orElseGet(() -> grokDelegate.orElse(null));
         this.redisTemplate = redisTemplate;
         this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         this.fileCacheDir = Paths.get(fileCacheDir);
@@ -93,8 +95,8 @@ public class CachedGrokService implements LLMProvider {
         // --- Cache MISS: call real Grok API (or offline synthetic fallback) ---
         Reasoning reasoning;
         if (delegate != null && delegate.isEnabled()) {
-            logger.info("[LLM Cache MISS] Calling real Grok API. key={}, symbol={}, price={}",
-                    cacheKey, context.getTradingSymbol(), context.getPerception().getCurrentPrice());
+            logger.info("[LLM Cache MISS] Calling {} API. key={}, symbol={}, price={}",
+                    delegate.getProviderName(), cacheKey, context.getTradingSymbol(), context.getPerception().getCurrentPrice());
             reasoning = delegate.generateReasoning(context);
         } else {
             logger.info("[LLM Cache MISS - Offline] Generating synthetic reasoning. key={}, symbol={}, price={}",
