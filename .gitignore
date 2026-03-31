@@ -158,3 +158,11 @@ docs/diagrams/bybit-order-placement-sequence.mmd
 .gitignore
 docs/diagrams/order-placement-sequence.mmd
 docs/event-flow-diagrams.mmd
+docs/component_diagrams.md
+docs/dataflow_orchestrator_gateway.md
+docs/supplementary_diagrams.md
+docs/diagrams/c4_context.md
+docs/diagrams/class_hierarchy.md
+docs/diagrams/deployment.md
+docs/diagrams/erd.md
+docs/diagrams/mind_map.md

@@ -10,6 +10,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
+import tradingbot.agent.service.StrategyReviewService;
 import tradingbot.agent.service.TradeReflectionService;
 import tradingbot.agent.service.TradingAgentService;
 import tradingbot.agent.service.TradingTools;
@@ -125,6 +126,17 @@ public class LangChain4jConfig {
     @Bean
     public TradeReflectionService tradeReflectionService(ChatLanguageModel chatLanguageModel) {
         return AiServices.builder(TradeReflectionService.class)
+            .chatLanguageModel(chatLanguageModel)
+            .build();
+    }
+
+    /**
+     * Create the StrategyReviewService - stateless LLM service for periodic batch
+     * analysis of recent trade history. Called weekly by LLMStrategyReviewService.
+     */
+    @Bean
+    public StrategyReviewService strategyReviewService(ChatLanguageModel chatLanguageModel) {
+        return AiServices.builder(StrategyReviewService.class)
             .chatLanguageModel(chatLanguageModel)
             .build();
     }

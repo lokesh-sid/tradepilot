@@ -6,7 +6,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 import tradingbot.agent.application.event.TradeCompletedEvent;
+import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Outcome;
 import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
 import tradingbot.agent.service.RAGService;
 import tradingbot.agent.service.TradeReflectionService;
@@ -33,11 +36,14 @@ public class TradeReflectionListener {
 
     private final TradeReflectionService tradeReflectionService;
     private final RAGService ragService;
+    private final TradeJournalService tradeJournalService;
 
     public TradeReflectionListener(TradeReflectionService tradeReflectionService,
-                                   RAGService ragService) {
+                                   RAGService ragService,
+                                   TradeJournalService tradeJournalService) {
         this.tradeReflectionService = tradeReflectionService;
         this.ragService = ragService;
+        this.tradeJournalService = tradeJournalService;
     }
 
     /**
@@ -74,6 +80,18 @@ public class TradeReflectionListener {
                     outcome,
                     event.getRealizedPnlPercent(),
                     lessonLearned
+            );
+
+            // Step 4: Complete the trade journal entry
+            tradeJournalService.completeEntry(
+                    agentId,
+                    symbol,
+                    event.getExitPrice(),
+                    event.getRealizedPnlPercent() * event.getEntryPrice() / 100.0,
+                    event.getRealizedPnlPercent(),
+                    toJournalOutcome(outcome),
+                    lessonLearned,
+                    Instant.now()
             );
 
             logger.info("[Reflection] Agent {} memory updated for {} — outcome: {}", agentId, symbol, outcome);
@@ -121,6 +139,15 @@ public class TradeReflectionListener {
         } else {
             return TradeMemoryEntity.Outcome.BREAKEVEN;
         }
+    }
+
+    private Outcome toJournalOutcome(TradeMemoryEntity.Outcome memOutcome) {
+        return switch (memOutcome) {
+            case PROFIT    -> Outcome.PROFIT;
+            case LOSS      -> Outcome.LOSS;
+            case BREAKEVEN -> Outcome.BREAKEVEN;
+            default        -> Outcome.PENDING;
+        };
     }
 
     /**

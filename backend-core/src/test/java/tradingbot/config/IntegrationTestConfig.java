@@ -27,6 +27,11 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.devh.boot.grpc.server.autoconfigure.GrpcHealthServiceAutoConfiguration;
+import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
+import net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration;
+import net.devh.boot.grpc.server.autoconfigure.GrpcServerMetricAutoConfiguration;
+import net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -49,6 +54,7 @@ import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.manager.AgentManager;
 import tradingbot.agent.service.OrderPlacementService;
 import tradingbot.agent.service.RAGService;
+import tradingbot.agent.service.StrategyReviewService;
 import tradingbot.agent.service.TradeReflectionService;
 import tradingbot.agent.service.TradingAgentService;
 import tradingbot.agent.service.TradingTools;
@@ -90,11 +96,11 @@ import tradingbot.security.repository.UserRepository;
     RedisRepositoriesAutoConfiguration.class,
     SecurityAutoConfiguration.class,
     ManagementWebSecurityAutoConfiguration.class,
-    net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration.class,
-    net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration.class,
-    net.devh.boot.grpc.server.autoconfigure.GrpcServerMetricAutoConfiguration.class,
-    net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration.class,
-    net.devh.boot.grpc.server.autoconfigure.GrpcHealthServiceAutoConfiguration.class
+    GrpcServerAutoConfiguration.class,
+    GrpcServerFactoryAutoConfiguration.class,
+    GrpcServerMetricAutoConfiguration.class,
+    GrpcServerSecurityAutoConfiguration.class,
+    GrpcHealthServiceAutoConfiguration.class
     // KafkaAutoConfiguration is intentionally NOT excluded – real Kafka from Testcontainer
 })
 @ComponentScan(
@@ -320,6 +326,11 @@ public class IntegrationTestConfig {
     @Bean
     public TradingAgentService tradingAgentService() {
         return Mockito.mock(TradingAgentService.class);
+    }
+
+    @Bean
+    public StrategyReviewService strategyReviewService() {
+        return Mockito.mock(StrategyReviewService.class);
     }
 
     @Bean

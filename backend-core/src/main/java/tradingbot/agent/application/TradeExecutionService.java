@@ -15,6 +15,7 @@ import tradingbot.agent.domain.execution.ExecutionResult.ExecutionAction;
 import tradingbot.agent.domain.execution.ExecutorRef;
 import tradingbot.agent.domain.model.AgentDecision;
 import tradingbot.agent.infrastructure.persistence.OrderEntity;
+import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Direction;
 import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
 import tradingbot.bot.metrics.TradingMetrics;
 
@@ -51,6 +52,7 @@ public class TradeExecutionService {
     private final OrderService orderService;
     private final PerformanceTrackingService performanceTrackingService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TradeJournalService tradeJournalService;
     @Nullable
     private final TradingMetrics tradingMetrics;
 
@@ -58,10 +60,12 @@ public class TradeExecutionService {
             OrderService orderService,
             PerformanceTrackingService performanceTrackingService,
             ApplicationEventPublisher eventPublisher,
+            TradeJournalService tradeJournalService,
             @Nullable TradingMetrics tradingMetrics) {
         this.orderService = orderService;
         this.performanceTrackingService = performanceTrackingService;
         this.eventPublisher = eventPublisher;
+        this.tradeJournalService = tradeJournalService;
         this.tradingMetrics = tradingMetrics;
     }
 
@@ -77,11 +81,13 @@ public class TradeExecutionService {
      */
     public void record(ExecutorRef executor, String symbol, AgentDecision decision, ExecutionResult result) {
         try {
-            persistOrder(executor, symbol, decision, result);
+            String orderId = persistOrder(executor, symbol, decision, result);
             performanceTrackingService.recordExecution(executor.executorId(), result);
             if (result.success() && result.action() != ExecutionAction.NOOP) {
                 recordMetrics(symbol, result.action());
-                if (isExit(result.action())) {
+                if (isEntry(result.action())) {
+                    createJournalEntry(executor.executorId(), symbol, decision, result, orderId);
+                } else if (isExit(result.action())) {
                     publishTradeCompleted(executor.executorId(), symbol, decision, result);
                 }
             }
@@ -91,7 +97,7 @@ public class TradeExecutionService {
         }
     }
 
-    private void persistOrder(ExecutorRef executor, String symbol, AgentDecision decision, ExecutionResult result) {
+    private String persistOrder(ExecutorRef executor, String symbol, AgentDecision decision, ExecutionResult result) {
         double quantity = result.fillQuantity() > 0 ? result.fillQuantity()
                 : (decision.quantity() != null ? decision.quantity() : 1.0);
 
@@ -99,8 +105,9 @@ public class TradeExecutionService {
                 ? OrderEntity.ExecutorType.BOT
                 : OrderEntity.ExecutorType.AGENT;
 
+        String orderId = UUID.randomUUID().toString();
         OrderEntity.Builder builder = OrderEntity.builder()
-                .id(UUID.randomUUID().toString())
+                .id(orderId)
                 .executorId(executor.executorId())
                 .executorType(executorType)
                 .symbol(symbol)
@@ -122,6 +129,7 @@ public class TradeExecutionService {
         }
 
         orderService.createOrder(builder.build());
+        return orderId;
     }
 
     private void recordMetrics(String symbol, ExecutionAction action) {
@@ -147,6 +155,44 @@ public class TradeExecutionService {
         eventPublisher.publishEvent(new TradeCompletedEvent(
                 executorId, symbol, memDir, impliedEntry, exitPrice, pnlPercent, decision.reasoning()));
         logger.info("[TradeExecutionService] TradeCompletedEvent published for {} on {}", executorId, symbol);
+    }
+
+    private void createJournalEntry(String executorId, String symbol,
+                                     AgentDecision decision, ExecutionResult result,
+                                     String orderId) {
+        Direction direction = result.action() == ExecutionAction.ENTER_LONG
+                ? Direction.LONG : Direction.SHORT;
+
+        double quantity = result.fillQuantity() > 0 ? result.fillQuantity()
+                : (decision.quantity() != null ? decision.quantity() : 1.0);
+
+        // For LONG: SL is below entry, TP is above. For SHORT: SL is above entry, TP is below.
+        boolean isLong = direction == Direction.LONG;
+        Double stopLoss = decision.stopLossPercent() != null
+                ? result.fillPrice() * (isLong
+                        ? 1.0 - decision.stopLossPercent() / 100.0
+                        : 1.0 + decision.stopLossPercent() / 100.0)
+                : null;
+        Double takeProfit = decision.takeProfitPercent() != null
+                ? result.fillPrice() * (isLong
+                        ? 1.0 + decision.takeProfitPercent() / 100.0
+                        : 1.0 - decision.takeProfitPercent() / 100.0)
+                : null;
+
+        tradeJournalService.createEntry(
+                executorId, symbol, direction,
+                result.fillPrice(), quantity,
+                stopLoss, takeProfit,
+                decision.confidence(),
+                decision.reasoning(),
+                orderId,
+                result.timestamp());
+
+        logger.debug("[TradeExecutionService] Journal entry created for {} on {}", executorId, symbol);
+    }
+
+    private boolean isEntry(ExecutionAction action) {
+        return action == ExecutionAction.ENTER_LONG || action == ExecutionAction.ENTER_SHORT;
     }
 
     private boolean isExit(ExecutionAction action) {
