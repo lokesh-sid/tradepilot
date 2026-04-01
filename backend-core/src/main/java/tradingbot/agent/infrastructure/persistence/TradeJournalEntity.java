@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
@@ -37,20 +39,21 @@ import jakarta.persistence.Table;
 public class TradeJournalEntity {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     // -------------------------------------------------------------------------
     // Identity
     // -------------------------------------------------------------------------
 
     @Column(name = "agent_id", nullable = false)
-    private String agentId;
+    private Long agentId;
 
     @Column(nullable = false, length = 32)
     private String symbol;
 
     @Column(name = "entry_order_id")
-    private String entryOrderId;
+    private Long entryOrderId;
 
     // -------------------------------------------------------------------------
     // Decision context (set at entry, ephemeral)
@@ -162,17 +165,17 @@ public class TradeJournalEntity {
     // Getters / Setters
     // -------------------------------------------------------------------------
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getAgentId() { return agentId; }
-    public void setAgentId(String agentId) { this.agentId = agentId; }
+    public Long getAgentId() { return agentId; }
+    public void setAgentId(Long agentId) { this.agentId = agentId; }
 
     public String getSymbol() { return symbol; }
     public void setSymbol(String symbol) { this.symbol = symbol; }
 
-    public String getEntryOrderId() { return entryOrderId; }
-    public void setEntryOrderId(String entryOrderId) { this.entryOrderId = entryOrderId; }
+    public Long getEntryOrderId() { return entryOrderId; }
+    public void setEntryOrderId(Long entryOrderId) { this.entryOrderId = entryOrderId; }
 
     public Direction getDirection() { return direction; }
     public void setDirection(Direction direction) { this.direction = direction; }

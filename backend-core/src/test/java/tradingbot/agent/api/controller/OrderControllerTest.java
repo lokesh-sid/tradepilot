@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.ResponseEntity;
 
+import tradingbot.TestIds;
 import tradingbot.agent.api.dto.OrderResponse;
 import tradingbot.agent.application.OrderService;
 import tradingbot.agent.infrastructure.persistence.OrderEntity;
@@ -26,7 +27,7 @@ public class OrderControllerTest {
     @Test
     void testCreateOrderViaApi() {
         OrderEntity order = OrderEntity.builder()
-            .executorId("AGENT1234")
+            .executorId(TestIds.randomNumericId())
             .symbol("BTCUSDT")
             .direction(OrderEntity.Direction.LONG)
             .price(50000.0)

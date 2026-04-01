@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import tradingbot.TestIds;
 import tradingbot.agent.api.dto.OrderResponse;
 import tradingbot.agent.infrastructure.persistence.OrderEntity;
 import tradingbot.agent.infrastructure.repository.OrderRepository;
@@ -25,7 +26,7 @@ public class OrderServiceTest {
     @Test
     void testCreateOrderGeneratesCompositeId() {
         OrderEntity order = OrderEntity.builder()
-            .executorId("AGENT1234")
+            .executorId(TestIds.randomNumericId())
             .symbol("BTCUSDT")
             .direction(OrderEntity.Direction.LONG)
             .price(50000.0)
@@ -35,11 +36,15 @@ public class OrderServiceTest {
             .build();
 
         Mockito.when(orderRepository.save(Mockito.any(OrderEntity.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
+            .thenAnswer(invocation -> {
+                OrderEntity saved = invocation.getArgument(0);
+                saved.setId(12345678901L);
+                return saved;
+            });
 
         OrderResponse response = orderService.createOrder(order);
         assertNotNull(response.id);
-        assertTrue(response.id.startsWith("AGENT1234-"));
-        assertTrue(response.id.length() > "AGENT1234-".length());
+        assertFalse(response.id.isEmpty());
+        assertTrue(response.id.length() > 10);
     }
 }

@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import tradingbot.agent.TradingAgent;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.infrastructure.repository.JpaAgentRepository;
 import tradingbot.agent.manager.AgentManager;
@@ -84,6 +85,7 @@ public class BotStateController {
                     schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotStateResponse> getCurrentState(@PathVariable String botId) {
+        long entityId = Ids.requireId(botId, "botId");
         TradingAgent agent = botRequestValidator.resolveAgent(botId);
 
         BotStateResponse response = new BotStateResponse();
@@ -91,7 +93,7 @@ public class BotStateController {
         response.setStatus(agent.isRunning() ? BotStatus.RUNNING : BotStatus.STOPPED);
         response.setTimestamp(Instant.now());
 
-        agentRepository.findById(botId).ifPresent(entity -> {
+        agentRepository.findById(entityId).ifPresent(entity -> {
             response.setSymbol(entity.getTradingSymbol());
             response.setPaperMode(entity.getExecutionMode() == AgentEntity.ExecutionMode.FUTURES_PAPER);
         });
@@ -147,6 +149,7 @@ public class BotStateController {
 
     private void startBot(String botId, TradingAgent currentAgent,
                           BotStateUpdateRequest request, BotStateResponse response) {
+        long entityId = Ids.requireId(botId, "botId");
         botOperationPolicy.assertCanStart(currentAgent, botId);
 
         boolean resolvedPaperMode = botRequestValidator.resolvePaperMode(botId, request.getPaperMode());
@@ -160,7 +163,7 @@ public class BotStateController {
         response.setStatus(BotStatus.RUNNING);
         response.setDirection(request.getDirection());
         response.setPaperMode(resolvedPaperMode);
-        agentRepository.findById(botId).ifPresent(e -> response.setSymbol(e.getTradingSymbol()));
+        agentRepository.findById(entityId).ifPresent(e -> response.setSymbol(e.getTradingSymbol()));
         response.setMessage("Bot started successfully"
                 + (request.getReason() != null ? ": " + request.getReason() : ""));
     }

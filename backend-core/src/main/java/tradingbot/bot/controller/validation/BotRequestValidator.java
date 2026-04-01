@@ -3,6 +3,7 @@ package tradingbot.bot.controller.validation;
 import org.springframework.stereotype.Component;
 
 import tradingbot.agent.TradingAgent;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.infrastructure.repository.JpaAgentRepository;
 import tradingbot.agent.manager.AgentManager;
@@ -42,9 +43,10 @@ public class BotRequestValidator {
      * has a record for this botId.
      */
     public TradingAgent resolveAgent(String botId) {
+        long entityId = Ids.requireId(botId, "botId");
         TradingAgent agent = agentManager.getAgent(botId);
         if (agent == null) {
-            if (!agentRepository.existsById(botId)) {
+            if (!agentRepository.existsById(entityId)) {
                 throw new BotNotFoundException(botId);
             }
             agentManager.refreshAgent(botId);
@@ -119,7 +121,8 @@ public class BotRequestValidator {
      * @return the resolved paper-mode flag
      */
     public boolean resolvePaperMode(String botId, Boolean requestPaperMode) {
-        boolean isExistingPaper = agentRepository.findById(botId)
+        long entityId = Ids.requireId(botId, "botId");
+        boolean isExistingPaper = agentRepository.findById(entityId)
             .map(entity -> entity.getExecutionMode() == AgentEntity.ExecutionMode.FUTURES_PAPER)
             .orElse(true); // safe default: treat missing entity as paper
 

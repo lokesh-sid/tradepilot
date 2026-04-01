@@ -1,8 +1,16 @@
 package tradingbot.agent.service;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,11 +18,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import dev.langchain4j.agent.tool.Tool;
+import tradingbot.agent.config.AgentExecutionContext;
 import tradingbot.agent.domain.model.Order;
 import tradingbot.agent.domain.model.TradeDirection;
 import tradingbot.agent.domain.model.TradeOutcome;
 import tradingbot.agent.infrastructure.persistence.PositionEntity;
-import tradingbot.agent.config.AgentExecutionContext;
+import tradingbot.bot.service.BinanceFuturesService.Candle;
+import tradingbot.bot.service.Ticker24hrStats;
 
 /**
  * TradingTools - LangChain4j tools for autonomous trading agent
@@ -94,7 +104,7 @@ public class TradingTools {
     public double get24HourPriceChange(String symbol) {
         try {
             logger.info("Tool called: get24HourPriceChange for {}", symbol);
-            tradingbot.bot.service.Ticker24hrStats stats = executionContext.get().get24HourStats(symbol);
+            Ticker24hrStats stats = executionContext.get().get24HourStats(symbol);
             double priceChangePercent = stats.getPriceChangePercent();
             logger.info("24h price change for {}: {}%", symbol, priceChangePercent);
             return priceChangePercent;
@@ -114,7 +124,7 @@ public class TradingTools {
             
             // Fetch historical candles - need at least period + 1 candles
             int requiredCandles = period + 50; // Extra candles for warmup
-            var candles = executionContext.get().fetchOhlcv(symbol, "15m", requiredCandles);
+            List<Candle> candles = executionContext.get().fetchOhlcv(symbol, "15m", requiredCandles);
             
             if (candles.isEmpty()) {
                 logger.warn("No candles available for RSI calculation");
@@ -122,15 +132,15 @@ public class TradingTools {
             }
             
             // Convert to TA4j BarSeries
-            org.ta4j.core.BaseBarSeriesBuilder seriesBuilder = new org.ta4j.core.BaseBarSeriesBuilder();
+            BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder();
             seriesBuilder.withName(symbol);
-            org.ta4j.core.BarSeries series = seriesBuilder.build();
+            BarSeries series = seriesBuilder.build();
             
             for (var candle : candles) {
                 series.addBar(
-                    java.time.ZonedDateTime.ofInstant(
-                        java.time.Instant.ofEpochMilli(candle.getOpenTime()),
-                        java.time.ZoneId.systemDefault()
+                    ZonedDateTime.ofInstant(
+                        Instant.ofEpochMilli(candle.getOpenTime()),
+                        ZoneId.systemDefault()
                     ),
                     candle.getOpen(),
                     candle.getHigh(),
@@ -141,8 +151,8 @@ public class TradingTools {
             }
             
             // Calculate RSI using TA4j
-            org.ta4j.core.indicators.RSIIndicator rsi = new org.ta4j.core.indicators.RSIIndicator(
-                new org.ta4j.core.indicators.helpers.ClosePriceIndicator(series),
+            RSIIndicator rsi = new RSIIndicator(
+                new ClosePriceIndicator(series),
                 period
             );
             
@@ -165,7 +175,7 @@ public class TradingTools {
             logger.info("Tool called: getMarketTrend for {}", symbol);
             
             // Fetch historical candles for trend analysis
-            var candles = executionContext.get().fetchOhlcv(symbol, "1h", 200);
+            List<Candle> candles = executionContext.get().fetchOhlcv(symbol, "1h", 200);
             
             if (candles.isEmpty() || candles.size() < 50) {
                 logger.warn("Insufficient candles for trend analysis");
@@ -234,15 +244,14 @@ public class TradingTools {
         
         if (dryRun) {
             String orderId = UUID.randomUUID().toString();
-            logger.info("[DRY RUN] Would place BUY order: {} qty={} - Order ID: {}", 
+            logger.info("[DRY RUN] Would place BUY order: {} qty={} - Order ID: {}",
                        symbol, quantity, orderId);
             return String.format("DRY_RUN_ORDER_%s", orderId);
         }
-        
+
         try {
             // Create order object
             Order order = Order.builder()
-                .id(UUID.randomUUID().toString())
                 .symbol(symbol)
                 .direction(TradeDirection.LONG)
                 .quantity(quantity)
@@ -251,10 +260,11 @@ public class TradingTools {
                 .status(Order.OrderStatus.PENDING)
                 .createdAt(Instant.now())
                 .build();
-            
+
             // TODO: Execute order through exchange service
-            logger.info("Placed BUY order: {}", order.getId());
-            return order.getId();
+            String orderId = UUID.randomUUID().toString();
+            logger.info("Placed BUY order: {} for {}", orderId, symbol);
+            return orderId;
         } catch (Exception e) {
             logger.error("Error placing buy order: {}", e.getMessage());
             return "ERROR: " + e.getMessage();
@@ -271,15 +281,14 @@ public class TradingTools {
         
         if (dryRun) {
             String orderId = UUID.randomUUID().toString();
-            logger.info("[DRY RUN] Would place SELL order: {} qty={} - Order ID: {}", 
+            logger.info("[DRY RUN] Would place SELL order: {} qty={} - Order ID: {}",
                        symbol, quantity, orderId);
             return String.format("DRY_RUN_ORDER_%s", orderId);
         }
-        
+
         try {
             // Create order object
             Order order = Order.builder()
-                .id(UUID.randomUUID().toString())
                 .symbol(symbol)
                 .direction(TradeDirection.SHORT)
                 .quantity(quantity)
@@ -288,10 +297,11 @@ public class TradingTools {
                 .status(Order.OrderStatus.PENDING)
                 .createdAt(Instant.now())
                 .build();
-            
+
             // TODO: Execute order through exchange service
-            logger.info("Placed SELL order: {}", order.getId());
-            return order.getId();
+            String orderId = UUID.randomUUID().toString();
+            logger.info("Placed SELL order: {} for {}", orderId, symbol);
+            return orderId;
         } catch (Exception e) {
             logger.error("Error placing sell order: {}", e.getMessage());
             return "ERROR: " + e.getMessage();

@@ -21,12 +21,12 @@ import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
  * - Backup of experience metadata
  */
 @Repository
-public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, String> {
+public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, Long> {
 
     /**
      * Find all experiences for a specific agent
      */
-    List<TradeMemoryEntity> findByAgentId(String agentId);
+    List<TradeMemoryEntity> findByAgentId(Long agentId);
 
     /**
      * Find all experiences for a specific symbol
@@ -36,7 +36,7 @@ public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, 
     /**
      * Find all experiences for an agent on a specific symbol
      */
-    List<TradeMemoryEntity> findByAgentIdAndSymbol(String agentId, String symbol);
+    List<TradeMemoryEntity> findByAgentIdAndSymbol(Long agentId, String symbol);
 
     /**
      * Find all experiences with a specific outcome
@@ -49,7 +49,7 @@ public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, 
         @Query("SELECT m FROM TradeMemoryEntity m WHERE m.agentId = :agentId " +
            "AND m.outcome = 'PROFIT' AND m.profitPercent > 0 " +
            "ORDER BY m.profitPercent DESC")
-    List<TradeMemoryEntity> findProfitableTradesByAgent(@Param("agentId") String agentId);
+    List<TradeMemoryEntity> findProfitableTradesByAgent(@Param("agentId") Long agentId);
 
     /**
      * Find experiences created after a specific timestamp
@@ -62,7 +62,7 @@ public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, 
         @Query("SELECT m FROM TradeMemoryEntity m WHERE m.agentId = :agentId " +
            "ORDER BY m.timestamp DESC")
     List<TradeMemoryEntity> findRecentExperiencesByAgent(
-        @Param("agentId") String agentId
+        @Param("agentId") Long agentId
     );
 
     /**
@@ -71,19 +71,19 @@ public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, 
     @Query("SELECT COUNT(m) * 100.0 / (SELECT COUNT(m2) FROM TradeMemoryEntity m2 " +
            "WHERE m2.agentId = :agentId AND m2.outcome IN ('PROFIT', 'LOSS', 'BREAKEVEN')) " +
            "FROM TradeMemoryEntity m WHERE m.agentId = :agentId AND m.outcome = 'PROFIT'")
-    Double calculateWinRateByAgent(@Param("agentId") String agentId);
+    Double calculateWinRateByAgent(@Param("agentId") Long agentId);
 
     /**
      * Calculate average profit/loss for an agent
      */
     @Query("SELECT AVG(m.profitPercent) FROM TradeMemoryEntity m " +
            "WHERE m.agentId = :agentId AND m.profitPercent IS NOT NULL")
-    Double calculateAverageProfitByAgent(@Param("agentId") String agentId);
+    Double calculateAverageProfitByAgent(@Param("agentId") Long agentId);
 
     /**
      * Count experiences by outcome for an agent
      */
-    long countByAgentIdAndOutcome(String agentId, TradeMemoryEntity.Outcome outcome);
+    long countByAgentIdAndOutcome(Long agentId, TradeMemoryEntity.Outcome outcome);
 
     /**
      * Find all PENDING memories for an agent on a specific symbol.
@@ -94,7 +94,7 @@ public interface TradeMemoryRepository extends JpaRepository<TradeMemoryEntity, 
            "AND m.symbol = :symbol AND m.outcome = 'PENDING' " +
            "ORDER BY m.timestamp DESC")
     List<TradeMemoryEntity> findPendingByAgentIdAndSymbol(
-        @Param("agentId") String agentId,
+        @Param("agentId") Long agentId,
         @Param("symbol") String symbol
     );
 }

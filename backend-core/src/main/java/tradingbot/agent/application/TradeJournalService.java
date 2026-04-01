@@ -7,7 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+
+import tradingbot.agent.domain.util.Ids;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,10 +78,10 @@ public class TradeJournalService {
             String llmReasoning,
             String entryOrderId,
             Instant decidedAt) {
+        long agentEntityId = Ids.requireId(agentId, "agentId");
 
         TradeJournalEntity entity = new TradeJournalEntity();
-        entity.setId(UUID.randomUUID().toString());
-        entity.setAgentId(agentId);
+        entity.setAgentId(agentEntityId);
         entity.setSymbol(symbol);
         entity.setDirection(direction);
         entity.setEntryPrice(entryPrice);
@@ -89,7 +90,7 @@ public class TradeJournalService {
         entity.setTakeProfit(takeProfit);
         entity.setConfidence(confidence);
         entity.setLlmReasoning(llmReasoning);
-        entity.setEntryOrderId(entryOrderId);
+        entity.setEntryOrderId(Ids.optionalId(entryOrderId, "entryOrderId"));
         entity.setDecidedAt(decidedAt);
         entity.setOutcome(Outcome.PENDING);
         entity.setCreatedAt(Instant.now());
@@ -128,9 +129,10 @@ public class TradeJournalService {
             Outcome outcome,
             String llmLesson,
             Instant closedAt) {
+        long agentEntityId = Ids.requireId(agentId, "agentId");
 
         Optional<TradeJournalEntity> opt = journalRepository
-                .findTopByAgentIdAndSymbolAndOutcomeOrderByDecidedAtDesc(agentId, symbol, Outcome.PENDING);
+                .findTopByAgentIdAndSymbolAndOutcomeOrderByDecidedAtDesc(agentEntityId, symbol, Outcome.PENDING);
 
         if (opt.isEmpty()) {
             logger.warn("[Journal] No PENDING entry found to complete for agent {} on {}", agentId, symbol);
@@ -172,8 +174,9 @@ public class TradeJournalService {
             Short conviction,
             String reviewNotes,
             boolean markReviewed) {
+        long journalId = Ids.requireId(id, "id");
 
-        return journalRepository.findById(id).map(entity -> {
+        return journalRepository.findById(journalId).map(entity -> {
             if (notes != null)       entity.setNotes(notes);
             if (tags != null)        entity.setTags(tagsToString(tags));
             if (conviction != null)  entity.setConviction(conviction);
@@ -192,6 +195,10 @@ public class TradeJournalService {
      */
     @Transactional
     public void applyBatchReview(String id, String analysis, boolean flagged) {
+        applyBatchReview(Ids.requireId(id, "id"), analysis, flagged);
+    }
+
+    public void applyBatchReview(long id, String analysis, boolean flagged) {
         journalRepository.findById(id).ifPresent(entity -> {
             entity.setLlmBatchAnalysis(analysis);
             entity.setFlaggedForReview(flagged);
@@ -204,6 +211,10 @@ public class TradeJournalService {
     // -------------------------------------------------------------------------
 
     public Optional<TradeJournalEntity> findById(String id) {
+        return findById(Ids.requireId(id, "id"));
+    }
+
+    public Optional<TradeJournalEntity> findById(long id) {
         return journalRepository.findById(id);
     }
 
@@ -214,17 +225,18 @@ public class TradeJournalService {
             Boolean flaggedForReview,
             int page,
             int size) {
+        Long agentEntityId = agentId != null ? Ids.requireId(agentId, "agentId") : null;
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "decidedAt"));
 
-        if (agentId != null && symbol != null) {
-            return journalRepository.findByAgentIdAndSymbol(agentId, symbol, pageable);
+        if (agentEntityId != null && symbol != null) {
+            return journalRepository.findByAgentIdAndSymbol(agentEntityId, symbol, pageable);
         }
-        if (agentId != null && outcome != null) {
-            return journalRepository.findByAgentIdAndOutcome(agentId, parseOutcome(outcome), pageable);
+        if (agentEntityId != null && outcome != null) {
+            return journalRepository.findByAgentIdAndOutcome(agentEntityId, parseOutcome(outcome), pageable);
         }
-        if (agentId != null) {
-            return journalRepository.findByAgentId(agentId, pageable);
+        if (agentEntityId != null) {
+            return journalRepository.findByAgentId(agentEntityId, pageable);
         }
         if (symbol != null) {
             return journalRepository.findBySymbol(symbol, pageable);
@@ -239,15 +251,16 @@ public class TradeJournalService {
     }
 
     public JournalStats getStats(String agentId) {
-        long total  = journalRepository.countClosed(agentId, Outcome.PENDING);
-        long wins   = journalRepository.countWins(agentId, Outcome.PROFIT);
-        Double avgPnl        = journalRepository.avgPnlPercent(agentId, Outcome.PENDING);
-        Double avgConfWins   = journalRepository.avgConfidenceOnWins(agentId, Outcome.PROFIT);
-        Double avgConfLosses = journalRepository.avgConfidenceOnLosses(agentId, Outcome.LOSS);
+        long agentEntityId = Ids.requireId(agentId, "agentId");
+        long total  = journalRepository.countClosed(agentEntityId, Outcome.PENDING);
+        long wins   = journalRepository.countWins(agentEntityId, Outcome.PROFIT);
+        Double avgPnl        = journalRepository.avgPnlPercent(agentEntityId, Outcome.PENDING);
+        Double avgConfWins   = journalRepository.avgConfidenceOnWins(agentEntityId, Outcome.PROFIT);
+        Double avgConfLosses = journalRepository.avgConfidenceOnLosses(agentEntityId, Outcome.LOSS);
 
         double winRate = total > 0 ? (double) wins / total : 0.0;
 
-        List<TradeJournalEntity> closed = journalRepository.findAllClosedByAgent(agentId, Outcome.PENDING);
+        List<TradeJournalEntity> closed = journalRepository.findAllClosedByAgent(agentEntityId, Outcome.PENDING);
         List<TagStats> tagStats = computeTagStats(closed);
 
         return new JournalStats(total, winRate, avgPnl, avgConfWins, avgConfLosses, tagStats);

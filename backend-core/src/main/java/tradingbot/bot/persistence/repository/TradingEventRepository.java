@@ -18,7 +18,7 @@ import tradingbot.bot.persistence.entity.TradingEventEntity;
  * Provides CRUD operations and custom queries for event analytics.
  */
 @Repository
-public interface TradingEventRepository extends JpaRepository<TradingEventEntity, String> {
+public interface TradingEventRepository extends JpaRepository<TradingEventEntity, Long> {
     
     /**
      * Find event by event ID.

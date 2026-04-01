@@ -62,7 +62,7 @@ public class Agent {
     }
 
     /**
-     * Factory method to create a new agent
+     * Factory method to create a new agent. ID is null until the entity is persisted.
      */
     public static Agent create(String name, AgentGoal goal, String tradingSymbol, double capital, String ownerId) {
         return create(name, goal, tradingSymbol, capital, ownerId, null);
@@ -70,7 +70,7 @@ public class Agent {
 
     public static Agent create(String name, AgentGoal goal, String tradingSymbol, double capital, String ownerId, String exchangeName) {
         return new Agent(
-            AgentId.generate(),
+            null,
             name,
             goal,
             tradingSymbol,

@@ -3,18 +3,16 @@ package tradingbot.bot.controller;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import org.springframework.test.context.TestPropertySource;
-
 import tradingbot.AbstractIntegrationTest;
+import tradingbot.TestIds;
 import tradingbot.bot.TradeDirection;
 import tradingbot.bot.controller.dto.request.BotStartRequest;
 import tradingbot.bot.controller.dto.request.LeverageUpdateRequest;
@@ -369,7 +367,7 @@ class TradingBotControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when getting status of non-existent bot")
     void getStatus_nonExistentBot_shouldReturn404() throws Exception {
-        String nonExistentBotId = UUID.randomUUID().toString();
+        String nonExistentBotId = TestIds.randomNumericIdAsString();
 
         performGet(API_V1_BOTS + "/" + nonExistentBotId + "/status")
                 .andExpect(status().isNotFound())
@@ -380,7 +378,7 @@ class TradingBotControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when starting non-existent bot")
     void startBot_nonExistentBot_shouldReturn404() throws Exception {
-        String nonExistentBotId = UUID.randomUUID().toString();
+        String nonExistentBotId = TestIds.randomNumericIdAsString();
 
         BotStartRequest startRequest = new BotStartRequest();
         startRequest.setDirection(TradeDirection.LONG);
@@ -394,7 +392,7 @@ class TradingBotControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when deleting non-existent bot")
     void deleteBot_nonExistentBot_shouldReturn404() throws Exception {
-        String nonExistentBotId = UUID.randomUUID().toString();
+        String nonExistentBotId = TestIds.randomNumericIdAsString();
 
         performDelete(API_V1_BOTS + "/" + nonExistentBotId)
                 .andExpect(status().isNotFound())

@@ -1,7 +1,8 @@
 package tradingbot.agent.application;
 
 import java.time.Instant;
-import java.util.UUID;
+
+import tradingbot.agent.domain.util.Ids;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,10 +106,8 @@ public class TradeExecutionService {
                 ? OrderEntity.ExecutorType.BOT
                 : OrderEntity.ExecutorType.AGENT;
 
-        String orderId = UUID.randomUUID().toString();
         OrderEntity.Builder builder = OrderEntity.builder()
-                .id(orderId)
-                .executorId(executor.executorId())
+                .executorId(Ids.requireId(executor.executorId(), "executorId"))
                 .executorType(executorType)
                 .symbol(symbol)
                 .direction(decision.action() == AgentDecision.Action.BUY
@@ -128,8 +127,7 @@ public class TradeExecutionService {
                    .failureReason(result.reason());
         }
 
-        orderService.createOrder(builder.build());
-        return orderId;
+        return orderService.createOrder(builder.build()).id;
     }
 
     private void recordMetrics(String symbol, ExecutionAction action) {

@@ -8,6 +8,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
@@ -15,6 +17,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import tradingbot.agent.api.dto.OrderResponse;
+import tradingbot.agent.domain.util.Ids;
 
 /**
  * OrderEntity - JPA entity for Order persistence
@@ -31,8 +34,8 @@ public class OrderEntity {
 
     public OrderResponse toOrderResponse() {
         return new OrderResponse(
-            this.id,
-            this.executorId,
+            Ids.asString(this.id),
+            Ids.asString(this.executorId),
             this.symbol,
             this.direction != null ? this.direction.name() : null,
             this.price,
@@ -49,11 +52,12 @@ public class OrderEntity {
     }
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @NotBlank
+    @NotNull
     @Column(name = "executor_id", nullable = false)
-    private String executorId;
+    private Long executorId;
 
     @NotNull
     @Column(name = "executor_type", nullable = false)
@@ -125,11 +129,11 @@ public class OrderEntity {
     public OrderEntity() {}
 
     // Getters and setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getExecutorId() { return executorId; }
-    public void setExecutorId(String executorId) { this.executorId = executorId; }
+    public Long getExecutorId() { return executorId; }
+    public void setExecutorId(Long executorId) { this.executorId = executorId; }
 
     public ExecutorType getExecutorType() { return executorType; }
     public void setExecutorType(ExecutorType executorType) { this.executorType = executorType; }
@@ -190,8 +194,8 @@ public class OrderEntity {
     }
 
     public static class Builder {
-        private String id;
-        private String executorId;
+        private Long id;
+        private Long executorId;
         private ExecutorType executorType;
         private String symbol;
         private Direction direction;
@@ -213,8 +217,8 @@ public class OrderEntity {
 
         private Builder() {}
 
-        public Builder id(String id) { this.id = id; return this; }
-        public Builder executorId(String executorId) { this.executorId = executorId; return this; }
+        public Builder id(Long id) { this.id = id; return this; }
+        public Builder executorId(Long executorId) { this.executorId = executorId; return this; }
         public Builder executorType(ExecutorType executorType) { this.executorType = executorType; return this; }
         public Builder symbol(String symbol) { this.symbol = symbol; return this; }
         public Builder direction(Direction direction) { this.direction = direction; return this; }

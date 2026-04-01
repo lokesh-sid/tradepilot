@@ -2,7 +2,6 @@ package tradingbot.agent.service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import tradingbot.agent.domain.model.Position;
 import tradingbot.agent.domain.model.TradeDirection;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.PositionEntity;
 import tradingbot.agent.infrastructure.repository.PositionRepository;
 import tradingbot.bot.service.FuturesExchangeService;
@@ -249,7 +249,6 @@ public class PositionMonitoringService {
             String mainOrderId) {
         
         Position position = Position.builder()
-            .id(UUID.randomUUID().toString())
             .agentId(agentId)
             .symbol(symbol)
             .direction(direction)
@@ -264,15 +263,15 @@ public class PositionMonitoringService {
         
         // Persist to database
         PositionEntity entity = new PositionEntity(
-            position.getId(),
-            position.getAgentId(),
+            null,
+            Ids.requireId(position.getAgentId(), "agentId"),
             position.getSymbol(),
             PositionEntity.Direction.valueOf(position.getDirection().name()),
             position.getEntryPrice(),
             position.getQuantity(),
             position.getStopLoss(),
             position.getTakeProfit(),
-            position.getMainOrderId(),
+            Ids.requireId(position.getMainOrderId(), "mainOrderId"),
             PositionEntity.Status.OPEN,
             position.getOpenedAt()
         );
@@ -287,7 +286,7 @@ public class PositionMonitoringService {
      * Get all open positions for an agent
      */
     public List<PositionEntity> getOpenPositions(String agentId) {
-        return positionRepository.findByAgentIdAndStatus(agentId, PositionEntity.Status.OPEN);
+        return positionRepository.findByAgentIdAndStatus(Ids.requireId(agentId, "agentId"), PositionEntity.Status.OPEN);
     }
     
     /**

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import tradingbot.agent.api.dto.OrderResponse;
-import tradingbot.agent.domain.util.OrderIdGenerator;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.OrderEntity;
 import tradingbot.agent.infrastructure.repository.OrderRepository;
 
@@ -23,19 +23,19 @@ public class OrderService {
 
     public List<OrderResponse> getOrders(String executorId) {
         List<OrderEntity> entities = (executorId != null && !executorId.isEmpty())
-            ? orderRepository.findByExecutorId(executorId)
+            ? orderRepository.findByExecutorId(Ids.requireId(executorId, "executorId"))
             : orderRepository.findAll();
         return entities.stream().map(OrderEntity::toOrderResponse).toList();
     }
 
     public Optional<OrderResponse> getOrderById(String id) {
-        return orderRepository.findById(id).map(OrderEntity::toOrderResponse);
+        return orderRepository.findById(Ids.requireId(id, "id")).map(OrderEntity::toOrderResponse);
     }
 
     public OrderResponse createOrder(OrderEntity order) {
         // Build a new OrderEntity to ensure all required fields are set
         OrderEntity newOrder = OrderEntity.builder()
-            .id(order.getId() == null || order.getId().isBlank() ? OrderIdGenerator.forAgent(order.getExecutorId()) : order.getId())
+            .id(order.getId())
             .executorId(order.getExecutorId())
             .symbol(order.getSymbol())
             .direction(order.getDirection())
@@ -56,16 +56,18 @@ public class OrderService {
     }
 
     public Optional<OrderResponse> updateOrder(String id, OrderEntity updatedOrder) {
-        return orderRepository.findById(id).map(existing -> {
-            updatedOrder.setId(id);
+        Long idLong = Ids.requireId(id, "id");
+        return orderRepository.findById(idLong).map(existing -> {
+            updatedOrder.setId(idLong);
             OrderEntity saved = orderRepository.save(updatedOrder);
             return saved.toOrderResponse();
         });
     }
 
     public boolean deleteOrder(String id) {
-        if (orderRepository.existsById(id)) {
-            orderRepository.deleteById(id);
+        Long idLong = Ids.requireId(id, "id");
+        if (orderRepository.existsById(idLong)) {
+            orderRepository.deleteById(idLong);
             return true;
         }
         return false;

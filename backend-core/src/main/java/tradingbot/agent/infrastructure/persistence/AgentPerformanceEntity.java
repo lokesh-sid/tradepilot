@@ -13,7 +13,7 @@ public class AgentPerformanceEntity {
 
     @Id
     @Column(name = "agent_id")
-    private String agentId;
+    private Long agentId;
 
     @Column(name = "total_trades")
     private int totalTrades = 0;
@@ -53,7 +53,7 @@ public class AgentPerformanceEntity {
 
     public AgentPerformanceEntity() {}
 
-    public AgentPerformanceEntity(String agentId, double initialCapital) {
+    public AgentPerformanceEntity(Long agentId, double initialCapital) {
         this.agentId = agentId;
         this.currentCapital = initialCapital;
         this.peakCapital = initialCapital;
@@ -61,8 +61,8 @@ public class AgentPerformanceEntity {
     }
 
     // Getters and Setters
-    public String getAgentId() { return agentId; }
-    public void setAgentId(String agentId) { this.agentId = agentId; }
+    public Long getAgentId() { return agentId; }
+    public void setAgentId(Long agentId) { this.agentId = agentId; }
 
     public int getTotalTrades() { return totalTrades; }
     public void setTotalTrades(int totalTrades) { this.totalTrades = totalTrades; }

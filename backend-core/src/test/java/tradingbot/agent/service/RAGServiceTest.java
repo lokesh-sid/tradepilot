@@ -19,6 +19,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import tradingbot.agent.domain.model.Agent;
 import tradingbot.agent.domain.model.AgentGoal;
+import tradingbot.agent.domain.model.AgentId;
+import tradingbot.agent.domain.model.AgentState;
 import tradingbot.agent.domain.model.Perception;
 import tradingbot.agent.domain.model.Reasoning;
 import tradingbot.agent.domain.model.ReasoningContext;
@@ -40,6 +42,19 @@ import tradingbot.agent.infrastructure.repository.TradeMemoryRepository;
  */
 @ExtendWith(MockitoExtension.class)
 class RAGServiceTest {
+
+    private Agent persistentTestAgent(String id, String name, AgentGoal goal, String symbol, double capital) {
+        return new Agent(
+            new AgentId(id),
+            name,
+            goal,
+            symbol,
+            capital,
+            AgentState.createIdle(),
+            Instant.now(),
+            "test-user-id"
+        );
+    }
     
     @Mock
     private EmbeddingService embeddingService;
@@ -77,7 +92,7 @@ class RAGServiceTest {
         
         // Create test data
         AgentGoal goal = new AgentGoal(AgentGoal.GoalType.MAXIMIZE_PROFIT, "Maximize profits");
-        testAgent = Agent.create("Test Agent", goal, "BTCUSDT", 10000.0, "test-user-id");
+        testAgent = persistentTestAgent("1001", "Test Agent", goal, "BTCUSDT", 10000.0);
         
         testPerception = new Perception(
             "BTCUSDT",

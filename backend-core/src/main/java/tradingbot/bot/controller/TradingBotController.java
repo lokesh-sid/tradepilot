@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import tradingbot.agent.TradingAgent;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.infrastructure.repository.JpaAgentRepository;
 import tradingbot.agent.manager.AgentManager;
@@ -74,7 +76,7 @@ import tradingbot.config.TradingSafetyService;
  * 
  * Security Features:
  * - Input validation on all endpoints
- * - UUID validation for bot IDs
+ * - Numeric ID validation for bot IDs
  * - Range validation for numeric parameters
  * - Global exception handling for consistent error responses
  */
@@ -121,10 +123,11 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotCreatedResponse> createBot() {
-        String botId = UUID.randomUUID().toString();
         TradingConfig config = new TradingConfig(); // Default config
+        String botIdValue = null;
         try {
-            String name = ("Bot-" + botId.substring(0, 8));
+            String nameSuffix = UUID.randomUUID().toString().substring(0, 8);
+            String name = "Bot-" + nameSuffix;
             String goalType = "MAXIMIZE_PROFIT";
             String goalDescription = objectMapper.writeValueAsString(config);
             String tradingSymbol = config.getSymbol();
@@ -134,7 +137,6 @@ public class TradingBotController {
             // goalDescription is now TEXT, no truncation needed
             tradingSymbol = tradingSymbol != null && tradingSymbol.length() > 255 ? tradingSymbol.substring(0, 255) : tradingSymbol;
             AgentEntity entity = new AgentEntity.Builder()
-                .id(botId)
                 .name(name)
                 .goalType(goalType)
                 .goalDescription(goalDescription)
@@ -145,15 +147,16 @@ public class TradingBotController {
                 .ownerId(null)
                 .executionMode(AgentEntity.ExecutionMode.FUTURES_PAPER)
                 .build();
-            agentManager.createAgent(entity);
-            logger.info("Created new bot: {} and saved to DB", botId);
-            BotCreatedResponse response = new BotCreatedResponse(botId, "Trading bot created successfully");
+            TradingAgent bot = agentManager.createAgent(entity);
+            botIdValue = bot.getId();
+            logger.info("Created new bot: {} and saved to DB", botIdValue);
+            BotCreatedResponse response = new BotCreatedResponse(botIdValue, "Trading bot created successfully");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (JsonProcessingException e) {
-            logger.error("Failed to serialize config for bot {}", botId, e);
+            logger.error("Failed to serialize config for bot {}", botIdValue, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            logger.error("Failed to create bot {}", botId, e);
+            logger.error("Failed to create bot {}", botIdValue, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -174,11 +177,12 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotStartResponse> startBot(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric ID)")
             @PathVariable @ValidBotId String botId,
             @Valid @RequestBody BotStartRequest request) {
+        long entityId = Ids.requireId(botId, "botId");
         
-        AgentEntity entity = agentRepository.findById(botId)
+        AgentEntity entity = agentRepository.findById(entityId)
             .orElseThrow(() -> new BotNotFoundException(botId));
 
         // Policy: reject if already running
@@ -249,7 +253,7 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotStopResponse> stopBot(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric format)") 
             @PathVariable @ValidBotId String botId) {
         
         TradingAgent agent = agentManager.getAgent(botId);
@@ -281,14 +285,15 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotStatusResponse> getStatus(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric format)") 
             @PathVariable @ValidBotId String botId) {
+        long entityId = Ids.requireId(botId, "botId");
         
         TradingAgent agent = botRequestValidator.resolveAgent(botId);
         BotStatusResponse response = new BotStatusResponse();
 
         response.setRunning(agent.isRunning());
-        agentRepository.findById(botId).ifPresent(entity -> {
+        agentRepository.findById(entityId).ifPresent(entity -> {
             response.setSymbol(entity.getTradingSymbol());
             response.setPaperMode(entity.getExecutionMode() == AgentEntity.ExecutionMode.FUTURES_PAPER);
         });
@@ -310,11 +315,12 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ConfigUpdateResponse> configureBot(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric ID)")
             @PathVariable @ValidBotId String botId,
             @Valid @RequestBody TradingConfig config) {
+        long entityId = Ids.requireId(botId, "botId");
         
-        AgentEntity entity = agentRepository.findById(botId)
+        AgentEntity entity = agentRepository.findById(entityId)
             .orElseThrow(() -> new BotNotFoundException(botId));
 
         // Policy: configuration changes require the bot to be stopped
@@ -367,9 +373,10 @@ public class TradingBotController {
                         content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<LeverageUpdateResponse> updateLeverage(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric ID)")
             @PathVariable @ValidBotId String botId,
             @Valid @RequestBody LeverageUpdateRequest request) {
+        long entityId = Ids.requireId(botId, "botId");
         
         // Resolve via capability interface — works for any future bot type that supports leverage
         LeverageConfigurable bot = botRequestValidator.resolveAgentAs(botId, LeverageConfigurable.class);
@@ -381,7 +388,7 @@ public class TradingBotController {
         bot.setDynamicLeverage(request.getLeverage().intValue());
         
         // Update DB
-        agentRepository.findById(botId).ifPresent(entity -> {
+        agentRepository.findById(entityId).ifPresent(entity -> {
             try {
                 TradingConfig config = objectMapper.readValue(entity.getGoalDescription(), TradingConfig.class);
                 config.setLeverage(request.getLeverage().intValue());
@@ -425,9 +432,10 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<SentimentUpdateResponse> enableSentimentAnalysis(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric ID)")
             @PathVariable @ValidBotId String botId,
             @Valid @RequestBody SentimentUpdateRequest request) {
+        long entityId = Ids.requireId(botId, "botId");
         
         boolean enable = request.getEnable();
         // Resolve via capability interface — works for any future bot type that supports sentiment
@@ -436,7 +444,7 @@ public class TradingBotController {
         bot.enableSentimentAnalysis(enable);
         
         // Update DB
-        agentRepository.findById(botId).ifPresent(entity -> {
+        agentRepository.findById(entityId).ifPresent(entity -> {
             AgentEntity updated = new AgentEntity.Builder()
                 .id(entity.getId())
                 .name(entity.getName())
@@ -508,7 +516,7 @@ public class TradingBotController {
         List<String> paginatedBotIds = new ArrayList<>();
         if (startIndex < totalElements) {
             for (int i = startIndex; i < endIndex; i++) {
-                paginatedBotIds.add(filteredAgents.get(i).getId());
+                paginatedBotIds.add(Ids.asString(filteredAgents.get(i).getId()));
             }
         }
 
@@ -563,8 +571,8 @@ public class TradingBotController {
         // Text search in botId or symbol
         if (search != null && !search.isEmpty()) {
             String searchLower = search.toLowerCase();
-            boolean matchesBotId = agent.getId() != null && 
-                                  agent.getId().toLowerCase().contains(searchLower);
+            boolean matchesBotId = agent.getId() != null &&
+                                  Ids.asString(agent.getId()).toLowerCase().contains(searchLower);
             boolean matchesSymbol = agent.getTradingSymbol() != null && 
                                    agent.getTradingSymbol().toLowerCase().contains(searchLower);
             if (!matchesBotId && !matchesSymbol) {
@@ -626,10 +634,11 @@ public class TradingBotController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<BotDeletedResponse> deleteBot(
-            @Parameter(description = "Unique bot identifier (UUID format)") 
+            @Parameter(description = "Unique bot identifier (numeric format)") 
             @PathVariable @ValidBotId String botId) {
+        long entityId = Ids.requireId(botId, "botId");
         
-        if (!agentRepository.existsById(botId)) {
+        if (!agentRepository.existsById(entityId)) {
             throw new BotNotFoundException(botId);
         }
         agentManager.deleteAgent(botId);

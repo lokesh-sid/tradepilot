@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import tradingbot.agent.infrastructure.persistence.AgentPerformanceEntity;
 
 @Repository
-public interface AgentPerformanceRepository extends JpaRepository<AgentPerformanceEntity, String> {
+public interface AgentPerformanceRepository extends JpaRepository<AgentPerformanceEntity, Long> {
 }

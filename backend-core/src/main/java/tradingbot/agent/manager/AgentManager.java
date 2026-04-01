@@ -19,6 +19,7 @@ import tradingbot.agent.application.event.AgentPausedEvent;
 import tradingbot.agent.application.event.AgentStartedEvent;
 import tradingbot.agent.application.event.AgentStoppedEvent;
 import tradingbot.agent.domain.model.AgentId;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.factory.AgentFactory;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.infrastructure.repository.JpaAgentRepository;
@@ -81,6 +82,7 @@ public class AgentManager {
     // ------------------------------------------------------------------
 
     public void startAgent(String id) {
+        long entityId = toEntityId(id);
         TradingAgent agent = agents.get(id);
         if (agent == null) {
             log.warn("startAgent: agent not found: {}", id);
@@ -89,8 +91,8 @@ public class AgentManager {
         if (!agent.isRunning()) {
             agent.start();
         }
-        agentRepository.updateStatus(id, AgentEntity.AgentStatus.ACTIVE);
-        agentRepository.findById(id).ifPresent(this::publishStartedEvent);
+        agentRepository.updateStatus(entityId, AgentEntity.AgentStatus.ACTIVE);
+        agentRepository.findById(entityId).ifPresent(this::publishStartedEvent);
         log.info("Agent {} started", id);
     }
 
@@ -99,7 +101,7 @@ public class AgentManager {
     // ------------------------------------------------------------------
 
     public void startAgent(String id, AgentEntity.ExecutionMode mode) {
-        agentRepository.updateStatusAndMode(id, AgentEntity.AgentStatus.ACTIVE, mode);
+        agentRepository.updateStatusAndMode(toEntityId(id), AgentEntity.AgentStatus.ACTIVE, mode);
         refreshAgent(id);
         startAgent(id);
     }
@@ -109,6 +111,7 @@ public class AgentManager {
     // ------------------------------------------------------------------
 
     public void stopAgent(String id) {
+        long entityId = toEntityId(id);
         TradingAgent agent = agents.get(id);
         if (agent == null) {
             log.warn("stopAgent: agent not found: {}", id);
@@ -117,7 +120,7 @@ public class AgentManager {
         if (agent.isRunning()) {
             agent.stop();
         }
-        agentRepository.updateStatus(id, AgentEntity.AgentStatus.STOPPED);
+        agentRepository.updateStatus(entityId, AgentEntity.AgentStatus.STOPPED);
         eventPublisher.publishEvent(new AgentStoppedEvent(new AgentId(id)));
         log.info("Agent {} stopped", id);
     }
@@ -127,6 +130,7 @@ public class AgentManager {
     // ------------------------------------------------------------------
 
     public void pauseAgent(String id) {
+        long entityId = toEntityId(id);
         TradingAgent agent = agents.get(id);
         if (agent == null) {
             log.warn("pauseAgent: agent not found: {}", id);
@@ -138,7 +142,7 @@ public class AgentManager {
             // Non-reactive agents have no pause — stop is the fallback
             agent.stop();
         }
-        agentRepository.updateStatus(id, AgentEntity.AgentStatus.PAUSED);
+        agentRepository.updateStatus(entityId, AgentEntity.AgentStatus.PAUSED);
         eventPublisher.publishEvent(new AgentPausedEvent(new AgentId(id)));
         log.info("Agent {} paused", id);
     }
@@ -148,6 +152,7 @@ public class AgentManager {
     // ------------------------------------------------------------------
 
     public void resumeAgent(String id) {
+        long entityId = toEntityId(id);
         TradingAgent agent = agents.get(id);
         if (agent == null) {
             log.warn("resumeAgent: agent not found: {}", id);
@@ -158,8 +163,8 @@ public class AgentManager {
         } else {
             agent.start();
         }
-        agentRepository.updateStatus(id, AgentEntity.AgentStatus.ACTIVE);
-        agentRepository.findById(id).ifPresent(this::publishStartedEvent);
+        agentRepository.updateStatus(entityId, AgentEntity.AgentStatus.ACTIVE);
+        agentRepository.findById(entityId).ifPresent(this::publishStartedEvent);
         log.info("Agent {} resumed", id);
     }
 
@@ -187,8 +192,8 @@ public class AgentManager {
     // ------------------------------------------------------------------
 
     public TradingAgent createAgent(AgentEntity entity) {
-        agentRepository.save(entity);
-        TradingAgent agent = agentFactory.createAgent(entity);
+        AgentEntity saved = agentRepository.save(entity);
+        TradingAgent agent = agentFactory.createAgent(saved);
         agents.put(agent.getId(), agent);
         if (agent instanceof ReactiveTradingAgent reactive) {
             agentOrchestrator.registerReactiveAgent(reactive);
@@ -202,17 +207,18 @@ public class AgentManager {
             agent.stop();
         }
         agentOrchestrator.deregisterReactiveAgent(id);
-        agentRepository.deleteById(id);
+        agentRepository.deleteById(toEntityId(id));
         eventPublisher.publishEvent(new AgentStoppedEvent(new AgentId(id)));
     }
 
     public void refreshAgent(String id) {
+        long entityId = toEntityId(id);
         agentOrchestrator.deregisterReactiveAgent(id);
         TradingAgent existing = agents.get(id);
         if (existing != null && existing.isRunning()) {
             existing.stop();
         }
-        agentRepository.findById(id).ifPresent(entity -> {
+        agentRepository.findById(entityId).ifPresent(entity -> {
             try {
                 TradingAgent agent = agentFactory.createAgent(entity);
                 agents.put(id, agent);
@@ -237,8 +243,12 @@ public class AgentManager {
     // Internal helpers
     // ------------------------------------------------------------------
 
+    private long toEntityId(String id) {
+        return Ids.requireId(id, "agentId");
+    }
+
     private void publishStartedEvent(AgentEntity entity) {
         eventPublisher.publishEvent(new AgentStartedEvent(
-                new AgentId(entity.getId()), entity.getTradingSymbol()));
+                new AgentId(Ids.asString(entity.getId())), entity.getTradingSymbol()));
     }
 }

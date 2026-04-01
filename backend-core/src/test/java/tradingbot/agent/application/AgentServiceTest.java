@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import tradingbot.TestIds;
 import tradingbot.agent.api.dto.AgentMapper;
 import tradingbot.agent.api.dto.AgentResponse;
 import tradingbot.agent.api.dto.CreateAgentRequest;
@@ -150,7 +151,7 @@ class AgentServiceTest {
     @Test
     void testGetAgent_NotFound() {
         // Given
-        AgentId agentId = AgentId.generate();
+        AgentId agentId = new AgentId(TestIds.randomNumericIdAsString());
         when(agentRepository.findById(agentId)).thenReturn(Optional.empty());
         
         // When & Then

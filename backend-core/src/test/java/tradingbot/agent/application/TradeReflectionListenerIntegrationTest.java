@@ -33,7 +33,7 @@ import tradingbot.agent.service.TradeReflectionService;
 @DisplayName("Trade reflection listener — async event integration tests")
 class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
 
-    private static final String AGENT_ID = "agent-reflection-test";
+    private static final String AGENT_ID = "1000000000000003";
     private static final String SYMBOL   = "BTCUSDT";
     private static final String LESSON   = "Entry too early; wait for RSI confirmation before opening long.";
 
@@ -60,7 +60,7 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("profitable trade (pnl > 0.05%) completes journal entry with PROFIT outcome")
     void onTradeCompleted_profitTrade_shouldSetProfitOutcomeAndStoreLesson() {
-        String entryId = seedPendingEntry();
+        Long entryId = seedPendingEntry();
 
         publishEvent(AGENT_ID, SYMBOL, 50_000.0, 52_000.0, 4.0);
         awaitCompletion(entryId);
@@ -75,7 +75,7 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("losing trade (pnl < -0.05%) completes journal entry with LOSS outcome")
     void onTradeCompleted_lossTrade_shouldSetLossOutcome() {
-        String entryId = seedPendingEntry();
+        Long entryId = seedPendingEntry();
 
         publishEvent(AGENT_ID, SYMBOL, 50_000.0, 49_000.0, -2.0);
         awaitCompletion(entryId);
@@ -87,7 +87,7 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("breakeven trade (pnl within ±0.05%) completes journal entry with BREAKEVEN outcome")
     void onTradeCompleted_breakevenTrade_shouldSetBreakevenOutcome() {
-        String entryId = seedPendingEntry();
+        Long entryId = seedPendingEntry();
 
         publishEvent(AGENT_ID, SYMBOL, 50_000.0, 50_020.0, 0.04); // within ±0.05% threshold
         awaitCompletion(entryId);
@@ -107,7 +107,7 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("LLM API timeout"));
 
-        String entryId = seedPendingEntry();
+        Long entryId = seedPendingEntry();
 
         publishEvent(AGENT_ID, SYMBOL, 50_000.0, 49_000.0, -2.0);
         awaitCompletion(entryId);
@@ -124,7 +124,7 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("RAG memory is updated with the correct agent, symbol, and outcome")
     void onTradeCompleted_shouldUpdateRagMemoryAfterCompletion() {
-        String entryId = seedPendingEntry();
+        Long entryId = seedPendingEntry();
 
         publishEvent(AGENT_ID, SYMBOL, 50_000.0, 52_000.0, 4.0);
         awaitCompletion(entryId);
@@ -141,11 +141,11 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private String seedPendingEntry() {
+    private Long seedPendingEntry() {
         return journalService.createEntry(
                 AGENT_ID, SYMBOL, Direction.LONG,
                 50_000.0, 0.1, null, null, 75, "Original pre-trade reasoning",
-                "ord-seed-" + System.nanoTime(), Instant.now()
+            String.valueOf(System.nanoTime()), Instant.now()
         ).getId();
     }
 
@@ -160,7 +160,7 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
      * Polls the DB until the entry leaves PENDING state, confirming the async
      * {@link TradeReflectionListener} has committed its transaction.
      */
-    private void awaitCompletion(String entryId) {
+    private void awaitCompletion(Long entryId) {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
             TradeJournalEntity entry = journalRepository.findById(entryId).orElseThrow();
             assertThat(entry.getOutcome()).isNotEqualTo(Outcome.PENDING);

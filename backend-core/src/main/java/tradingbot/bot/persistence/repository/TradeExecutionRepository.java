@@ -17,7 +17,7 @@ import tradingbot.bot.persistence.entity.TradeExecutionEventEntity;
  * Provides specialized queries for trade history and analytics.
  */
 @Repository
-public interface TradeExecutionRepository extends JpaRepository<TradeExecutionEventEntity, String> {
+public interface TradeExecutionRepository extends JpaRepository<TradeExecutionEventEntity, Long> {
     
     /**
      * Find all trades for a specific bot.

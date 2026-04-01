@@ -10,7 +10,7 @@ import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 
 /**
- * Validates that a bot ID is in valid UUID format
+ * Validates that a bot ID is a valid numeric (Long) identifier
  */
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
@@ -18,7 +18,7 @@ import jakarta.validation.Payload;
 @Documented
 public @interface ValidBotId {
     
-    String message() default "Invalid bot ID format. Must be a valid UUID";
+    String message() default "Invalid bot ID format. Must be a valid numeric ID";
     
     Class<?>[] groups() default {};
     

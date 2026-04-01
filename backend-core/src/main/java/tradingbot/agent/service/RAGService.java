@@ -17,6 +17,7 @@ import tradingbot.agent.domain.model.ReasoningContext;
 import tradingbot.agent.domain.model.TradeDirection;
 import tradingbot.agent.domain.model.TradeMemory;
 import tradingbot.agent.domain.model.TradeOutcome;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.llm.LLMProvider;
 import tradingbot.agent.infrastructure.persistence.TradeMemoryEntity;
 import tradingbot.agent.infrastructure.repository.TradeMemoryRepository;
@@ -256,7 +257,7 @@ public class RAGService {
             // Store in vector database
             memoryStore.store(memory);
             
-            logger.info("Successfully stored trade memory {}", memory.getId());
+            logger.info("Successfully stored trade memory for agent {} on {}", agentId, symbol);
             
         } catch (Exception e) {
             logger.error("Failed to store trade memory", e);
@@ -355,16 +356,17 @@ public class RAGService {
                     agentId, symbol, outcome);
 
             // 1. Find the most recent PENDING SQL record
-            var pendingRecords = tradeMemoryRepository.findPendingByAgentIdAndSymbol(agentId, symbol);
+            var pendingRecords = tradeMemoryRepository.findPendingByAgentIdAndSymbol(Ids.requireId(agentId, "agentId"), symbol);
 
             // 2. Delete old vector entry if one existed
             if (!pendingRecords.isEmpty()) {
                 TradeMemoryEntity pending = pendingRecords.get(0);
+                String pendingId = Ids.asString(pending.getId());
                 try {
-                    memoryStore.delete(pending.getId());
-                    logger.debug("Deleted stale PENDING vector entry {}", pending.getId());
+                    memoryStore.delete(pendingId);
+                    logger.debug("Deleted stale PENDING vector entry {}", pendingId);
                 } catch (Exception ex) {
-                    logger.warn("Could not delete pending vector entry {}: {}", pending.getId(), ex.getMessage());
+                    logger.warn("Could not delete pending vector entry {}: {}", pendingId, ex.getMessage());
                 }
 
                 // 3. Update SQL record in-place
@@ -374,7 +376,7 @@ public class RAGService {
                 pending.setProfitPercent(profitPercent);
                 pending.setLessonLearned(lessonLearned);
                 tradeMemoryRepository.save(pending);
-                logger.debug("Updated SQL trade memory record {}", pending.getId());
+                logger.debug("Updated SQL trade memory record {}", pendingId);
 
                 // 4. Re-embed + re-store the updated entry as a new vector
                 String updatedScenario = String.format(
@@ -387,7 +389,7 @@ public class RAGService {
                         ? TradeDirection.LONG : TradeDirection.SHORT;
 
                 TradeMemory updated = TradeMemory.builder()
-                    .id(pending.getId())
+                    .id(pendingId)
                     .agentId(agentId)
                     .symbol(symbol)
                     .scenarioDescription(updatedScenario)

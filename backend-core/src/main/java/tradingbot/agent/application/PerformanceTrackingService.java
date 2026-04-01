@@ -13,6 +13,7 @@ import tradingbot.agent.domain.execution.ExecutionResult;
 import tradingbot.agent.domain.model.Agent;
 import tradingbot.agent.domain.model.AgentId;
 import tradingbot.agent.domain.repository.AgentRepository;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.AgentPerformanceEntity;
 import tradingbot.agent.infrastructure.repository.AgentPerformanceRepository;
 
@@ -40,6 +41,7 @@ public class PerformanceTrackingService {
             return; // Only track successful fills
         }
 
+        long agentEntityId = Ids.requireId(agentIdStr, "agentId");
         AgentId agentId = new AgentId(agentIdStr);
         Agent agent = agentRepository.findById(agentId).orElse(null);
         if (agent == null) {
@@ -47,8 +49,8 @@ public class PerformanceTrackingService {
             return;
         }
 
-        AgentPerformanceEntity perf = performanceRepository.findById(agentIdStr)
-                .orElseGet(() -> new AgentPerformanceEntity(agentIdStr, agent.getCapital()));
+        AgentPerformanceEntity perf = performanceRepository.findById(agentEntityId)
+                .orElseGet(() -> new AgentPerformanceEntity(agentEntityId, agent.getCapital()));
 
         // We consider an EXIT action as a closed trade for PNL tracking
         if (result.action() == ExecutionResult.ExecutionAction.EXIT_LONG || 
@@ -105,12 +107,13 @@ public class PerformanceTrackingService {
 
     @Transactional(readOnly = true)
     public PerformanceResponse getPerformance(String agentIdStr) {
+        long agentEntityId = Ids.requireId(agentIdStr, "agentId");
         AgentId agentId = new AgentId(agentIdStr);
         Agent agent = agentRepository.findById(agentId)
             .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentIdStr));
 
-        AgentPerformanceEntity perf = performanceRepository.findById(agentIdStr)
-            .orElseGet(() -> new AgentPerformanceEntity(agentIdStr, agent.getCapital()));
+        AgentPerformanceEntity perf = performanceRepository.findById(agentEntityId)
+            .orElseGet(() -> new AgentPerformanceEntity(agentEntityId, agent.getCapital()));
 
         return performanceMapper.toResponse(perf);
     }

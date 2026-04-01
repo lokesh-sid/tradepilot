@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity;
 import tradingbot.agent.service.StrategyReviewService;
 
@@ -80,14 +81,14 @@ public class LLMStrategyReviewService {
     // Per-agent review
     // -------------------------------------------------------------------------
 
-    private void reviewAgentTrades(String agentId, List<TradeJournalEntity> trades) {
+    private void reviewAgentTrades(Long agentId, List<TradeJournalEntity> trades) {
         logger.info("[StrategyReview] Reviewing {} trades for agent {}", trades.size(), agentId);
 
         try {
             String tradeHistory = formatTradeHistory(trades);
             String period = formatPeriod(trades);
 
-            String analysis = strategyReviewService.analyzeTradePatterns(agentId, period, tradeHistory);
+            String analysis = strategyReviewService.analyzeTradePatterns(Ids.asString(agentId), period, tradeHistory);
 
             // Write the same analysis text to all entries for this batch, and flag
             // any entry where the LLM output references its symbol+direction (simple heuristic).

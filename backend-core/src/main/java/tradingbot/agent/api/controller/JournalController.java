@@ -23,6 +23,7 @@ import tradingbot.agent.api.dto.JournalStatsResponse.TagStatDTO;
 import tradingbot.agent.application.TradeJournalService;
 import tradingbot.agent.application.TradeJournalService.JournalStats;
 import tradingbot.agent.application.TradeJournalService.TagStats;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity;
 
 @RestController
@@ -94,10 +95,10 @@ public class JournalController {
 
     private JournalEntryResponse toResponse(TradeJournalEntity e) {
         return new JournalEntryResponse(
-                e.getId(),
-                e.getAgentId(),
+                Ids.asString(e.getId()),
+                Ids.asString(e.getAgentId()),
                 e.getSymbol(),
-                e.getEntryOrderId(),
+                Ids.asString(e.getEntryOrderId()),
                 e.getDirection() != null ? e.getDirection().name() : null,
                 e.getEntryPrice(),
                 e.getQuantity(),

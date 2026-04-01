@@ -9,6 +9,7 @@ import tradingbot.agent.domain.model.AgentId;
 import tradingbot.agent.domain.model.AgentState;
 import tradingbot.agent.domain.model.Perception;
 import tradingbot.agent.domain.model.Reasoning;
+import tradingbot.agent.domain.util.Ids;
 
 /**
  * AgentMapper - Maps between Agent domain model and AgentEntity
@@ -20,8 +21,11 @@ public class AgentMapper {
      * Convert Agent domain model to AgentEntity
      */
     public static AgentEntity toEntity(Agent agent) {
+        Long entityId = agent.getId() != null
+                ? Ids.requireId(agent.getId().getValue(), "agentId")
+                : null;
         AgentEntity.Builder builder = new AgentEntity.Builder()
-            .id(agent.getId().getValue())
+            .id(entityId)
             .name(agent.getName())
             .goalType(agent.getGoal().getType().name())
             .goalDescription(agent.getGoal().getDescription())
@@ -102,7 +106,7 @@ public class AgentMapper {
         
         // Create agent
         Agent agent = new Agent(
-            new AgentId(entity.getId()),
+            new AgentId(Ids.asString(entity.getId())),
             entity.getName(),
             goal,
             entity.getTradingSymbol(),

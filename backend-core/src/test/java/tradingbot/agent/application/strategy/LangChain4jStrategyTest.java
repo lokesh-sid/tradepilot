@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.time.Instant;
 import java.util.List;
 
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,8 @@ import tradingbot.agent.domain.model.TradeMemory;
 import tradingbot.agent.domain.model.TradeOutcome;
 import tradingbot.agent.config.AgentExecutionContext;
 import tradingbot.agent.config.ExchangeServiceRegistry;
+import tradingbot.agent.domain.model.AgentId;
+import tradingbot.agent.domain.model.AgentState;
 import tradingbot.agent.service.RAGService;
 import tradingbot.agent.service.TradingAgentService;
 
@@ -37,6 +40,19 @@ import tradingbot.agent.service.TradingAgentService;
  */
 @ExtendWith(MockitoExtension.class)
 class LangChain4jStrategyTest {
+
+    private Agent persistentTestAgent(String id, String name, AgentGoal goal, String symbol, double capital) {
+        return new Agent(
+            new AgentId(id),
+            name,
+            goal,
+            symbol,
+            capital,
+            AgentState.createIdle(),
+            Instant.now(),
+            "test-user-id"
+        );
+    }
     
     @Mock
     private TradingAgentService tradingAgentService;
@@ -58,7 +74,7 @@ class LangChain4jStrategyTest {
     @BeforeEach
     void setUp() {
         AgentGoal goal = new AgentGoal(AgentGoal.GoalType.MAXIMIZE_PROFIT, "Maximize profits");
-        testAgent = Agent.create("Agentic Agent", goal, "BTCUSDT", 10000.0, "test-user-id");
+        testAgent = persistentTestAgent("1001", "Agentic Agent", goal, "BTCUSDT", 10000.0);
         
         // Set RAG enabled by default
         ReflectionTestUtils.setField(strategy, "ragEnabled", true);
@@ -244,7 +260,7 @@ class LangChain4jStrategyTest {
     void testExecuteIteration_PassesCorrectSymbol() {
         // Given
         AgentGoal goal = new AgentGoal(AgentGoal.GoalType.MAXIMIZE_PROFIT, "ETH trading");
-        Agent ethAgent = Agent.create("ETH Agent", goal, "ETHUSDT", 5000.0, "test-user-id");
+        Agent ethAgent = persistentTestAgent("1002", "ETH Agent", goal, "ETHUSDT", 5000.0);
         
         when(tradingAgentService.analyzeAndDecide(
             anyString(), anyString(), anyString(), anyDouble(), anyInt(), anyString(), anyString()))
@@ -269,7 +285,7 @@ class LangChain4jStrategyTest {
     void testExecuteIteration_PassesCorrectGoal() {
         // Given
         AgentGoal hedgeGoal = new AgentGoal(AgentGoal.GoalType.HEDGE_RISK, "Risk mitigation");
-        Agent hedgeAgent = Agent.create("Hedge Agent", hedgeGoal, "BTCUSDT", 10000.0, "test-user-id");
+        Agent hedgeAgent = persistentTestAgent("1003", "Hedge Agent", hedgeGoal, "BTCUSDT", 10000.0);
         
         ArgumentCaptor<String> goalCaptor = ArgumentCaptor.forClass(String.class);
         when(tradingAgentService.analyzeAndDecide(
@@ -289,7 +305,7 @@ class LangChain4jStrategyTest {
         // Given
         double capital = 25000.0;
         AgentGoal goal = new AgentGoal(AgentGoal.GoalType.MAXIMIZE_PROFIT, "Big account");
-        Agent bigAgent = Agent.create("Big Agent", goal, "BTCUSDT", capital, "test-user-id");
+        Agent bigAgent = persistentTestAgent("1004", "Big Agent", goal, "BTCUSDT", capital);
         
         when(tradingAgentService.analyzeAndDecide(
             anyString(), anyString(), anyString(), anyDouble(), anyInt(), anyString(), anyString()))
@@ -666,8 +682,8 @@ class LangChain4jStrategyTest {
     private TradeMemory createMockTradeMemory(String symbol, TradeDirection direction, 
                                               TradeOutcome outcome, double profitPercent) {
         return TradeMemory.builder()
-            .id(java.util.UUID.randomUUID().toString())
-            .agentId(testAgent.getId().toString())
+            .id(UUID.randomUUID().toString())
+            .agentId(testAgent.getId().getValue())
             .symbol(symbol)
             .scenarioDescription("Test scenario")
             .direction(direction)

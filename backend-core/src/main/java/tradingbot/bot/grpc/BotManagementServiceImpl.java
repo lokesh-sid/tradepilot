@@ -10,9 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
+import tradingbot.agent.TradingAgent;
+import tradingbot.agent.infrastructure.repository.AgentEntity;
+import tradingbot.agent.manager.AgentManager;
 import tradingbot.bot.controller.dto.BotState;
 import tradingbot.bot.service.BotCacheService;
 import tradingbot.config.TradingConfig;
@@ -51,23 +56,27 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Autowired
     private BotCacheService botCacheService;
+
+    @Autowired
+    private AgentManager agentManager;
+
+    @Autowired
+    private ObjectMapper objectMapper;
     
     @Override
     public void createBot(CreateBotRequest request, StreamObserver<CreateBotResponse> responseObserver) {
         logger.info("gRPC CreateBot called for user: {}", request.getUserId());
         
         try {
-            // Generate unique bot ID
-            String botId = UUID.randomUUID().toString();
-            
             // Create TradingConfig from Proto config
             String symbol = request.getConfig().getSymbol();
             double tradeAmount = request.getConfig().getInitialCapital();
             int leverage = (int) request.getConfig().getLeverage();
             double trailingStop = request.getConfig().getTrailingStopPercentage();
-            
+            boolean paper = request.getConfig().getPaperTrading();
+
             TradingConfig tradingConfig = new TradingConfig(
-                symbol, 
+                symbol,
                 tradeAmount,
                 leverage,
                 trailingStop,
@@ -81,11 +90,30 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
                 2.0, // Default BB std
                 900  // Default interval (15 min)
             );
-            
-            // Create bot state using builder pattern
+            String goalDescription = objectMapper.writeValueAsString(tradingConfig);
+            String botName = "Bot-grpc-" + symbol + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+            // Persist via AgentManager to obtain a DB-generated numeric ID
+            AgentEntity entity = new AgentEntity.Builder()
+                .name(botName)
+                .goalType("MAXIMIZE_PROFIT")
+                .goalDescription(goalDescription)
+                .tradingSymbol(symbol)
+                .capital(tradeAmount)
+                .status(AgentEntity.AgentStatus.IDLE)
+                .createdAt(Instant.now())
+                .ownerId(request.getUserId().isEmpty() ? null : request.getUserId())
+                .executionMode(paper
+                    ? AgentEntity.ExecutionMode.FUTURES_PAPER
+                    : AgentEntity.ExecutionMode.FUTURES)
+                .build();
+            TradingAgent bot = agentManager.createAgent(entity);
+            String botId = bot.getId();
+
+            // Populate cache so subsequent gRPC operations can look up the bot
             BotState botState = BotState.builder()
                     .botId(botId)
-                    .paper(request.getConfig().getPaperTrading())
+                    .paper(paper)
                     .running(false)
                     .config(tradingConfig)
                     .sentimentEnabled(false)
@@ -94,7 +122,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
                     .lastUpdated(Instant.now())
                     .positionStatus("CREATED")
                     .build();
-            
+
             // Save to cache
             botCacheService.saveBotState(botId, botState);
             

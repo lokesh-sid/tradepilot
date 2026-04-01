@@ -19,6 +19,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import tradingbot.AbstractIntegrationTest;
+import tradingbot.TestIds;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Direction;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Outcome;
@@ -35,7 +37,7 @@ class LLMStrategyReviewServiceIntegrationTest extends AbstractIntegrationTest {
             "Pattern: 8 of 10 btcusdt long entries closed at a loss within 2h. " +
             "Suggestion: raise confidence threshold from 70 to 85 for LONG entries.";
 
-    private static final String AGENT_ID = "agent-review-test";
+    private static final String AGENT_ID = TestIds.randomNumericIdAsString();
     private static final String SYMBOL   = "BTCUSDT";
 
     @Autowired private LLMStrategyReviewService reviewService;
@@ -100,7 +102,7 @@ class LLMStrategyReviewServiceIntegrationTest extends AbstractIntegrationTest {
     void runWeeklyReview_multipleAgents_shouldReviewEachAgentSeparately() {
         seedEntry(AGENT_ID,     SYMBOL,   Direction.LONG,  Outcome.PROFIT,
                 Instant.now().minus(1, ChronoUnit.DAYS));
-        seedEntry("other-agent", "ETHUSDT", Direction.SHORT, Outcome.LOSS,
+        seedEntry("1000000000000005", "ETHUSDT", Direction.SHORT, Outcome.LOSS,
                 Instant.now().minus(1, ChronoUnit.DAYS));
 
         reviewService.runWeeklyReview();
@@ -114,7 +116,7 @@ class LLMStrategyReviewServiceIntegrationTest extends AbstractIntegrationTest {
     void runWeeklyReview_alreadyReviewed_shouldBeSkipped() {
         TradeJournalEntity entry = seedEntry(AGENT_ID, SYMBOL, Direction.LONG, Outcome.PROFIT,
                 Instant.now().minus(1, ChronoUnit.DAYS));
-        journalService.applyBatchReview(entry.getId(), "prior analysis", false);
+        journalService.applyBatchReview(String.valueOf(entry.getId()), "prior analysis", false);
 
         reviewService.runWeeklyReview();
 
@@ -184,7 +186,7 @@ class LLMStrategyReviewServiceIntegrationTest extends AbstractIntegrationTest {
                                           Instant closedAt) {
         journalService.createEntry(agentId, symbol, direction,
                 50_000.0, 0.1, null, null, 75, "test reasoning",
-                "ord-" + System.nanoTime(), Instant.now());
+                String.valueOf(System.nanoTime()), Instant.now());
 
         if (outcome != Outcome.PENDING) {
             double pnlPct = outcome == Outcome.PROFIT ? 2.0 : -2.0;
@@ -193,8 +195,9 @@ class LLMStrategyReviewServiceIntegrationTest extends AbstractIntegrationTest {
                     outcome, "lesson", closedAt);
         }
 
+        Long agentIdLong = Ids.requireId(agentId, "agentId");
         return journalRepository.findAll().stream()
-                .filter(e -> e.getAgentId().equals(agentId)
+                .filter(e -> e.getAgentId().equals(agentIdLong)
                         && e.getSymbol().equals(symbol)
                         && e.getDirection() == direction)
                 .findFirst().orElseThrow();

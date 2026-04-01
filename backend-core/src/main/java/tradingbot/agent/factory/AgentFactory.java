@@ -14,6 +14,7 @@ import tradingbot.agent.TradingAgent;
 import tradingbot.agent.config.AgentProperties;
 import tradingbot.agent.domain.risk.RiskContext;
 import tradingbot.agent.domain.risk.RiskGuard;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.impl.TechnicalTradingAgent;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.config.TradingConfig;
@@ -72,7 +73,7 @@ public class AgentFactory {
         try {
             TradingConfig config = objectMapper.readValue(entity.getGoalDescription(), TradingConfig.class);
             config.setSymbol(entity.getTradingSymbol());
-            return buildTechnicalAgent(entity.getId(), entity.getTradingSymbol(),
+            return buildTechnicalAgent(Ids.asString(entity.getId()), entity.getTradingSymbol(),
                     entity.getExchangeName(), config);
         } catch (Exception e) {
             log.error("Failed to create agent {} — invalid goalDescription JSON: {}",

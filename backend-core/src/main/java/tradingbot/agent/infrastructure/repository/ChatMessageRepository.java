@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, Long> {
-    List<ChatMessageEntity> findByAgentIdOrderByTimestampAsc(String agentId);
-    void deleteByAgentId(String agentId);
+    List<ChatMessageEntity> findByAgentIdOrderByTimestampAsc(Long agentId);
+    void deleteByAgentId(Long agentId);
 }

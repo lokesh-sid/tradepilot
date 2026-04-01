@@ -1,7 +1,6 @@
 package tradingbot.agent.service;
 
 import java.time.Instant;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,17 +10,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import tradingbot.agent.application.OrderService;
+import tradingbot.agent.config.AgentExecutionContext;
 import tradingbot.agent.domain.model.Agent;
 import tradingbot.agent.domain.model.Order;
 import tradingbot.agent.domain.model.Perception;
+import tradingbot.agent.domain.model.Position;
 import tradingbot.agent.domain.model.Reasoning;
 import tradingbot.agent.domain.model.TradeDirection;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.OrderEntity;
 import tradingbot.bot.controller.exception.BotOperationException;
 import tradingbot.bot.events.TradeExecutionEvent;
 import tradingbot.bot.messaging.EventPublisher;
-import tradingbot.agent.config.AgentExecutionContext;
-import tradingbot.agent.domain.model.Position;
 import tradingbot.bot.service.OrderResult;
 /**
  * OrderPlacementService - Parses LLM reasoning and executes orders
@@ -149,7 +149,6 @@ public class OrderPlacementService {
         
         // Create order
         Order order = Order.builder()
-            .id(UUID.randomUUID().toString())
             .executorId(agent.getId().toString())
             .symbol(perception.getSymbol())
             .direction(details.direction())
@@ -413,8 +412,7 @@ public class OrderPlacementService {
     private void persistOrder(Order order) {
         try {
             OrderEntity entity = OrderEntity.builder()
-                .id(order.getId())
-                .executorId(order.getExecutorId())
+                .executorId(Ids.requireId(order.getExecutorId(), "executorId"))
                 .symbol(order.getSymbol())
                 .direction(OrderEntity.Direction.valueOf(order.getDirection().name()))
                 .price(order.getPrice())
@@ -429,7 +427,7 @@ public class OrderPlacementService {
             entity.setExchangeOrderId(order.getExchangeOrderId());
             entity.setFailureReason(order.getFailureReason());
             orderService.createOrder(entity);
-            logger.debug("Persisted order {}", order.getId());
+            logger.debug("Persisted order for executor {}", order.getExecutorId());
         } catch (Exception e) {
             logger.error("Failed to persist order to database", e);
             // Don't throw - order execution should not fail due to persistence issues

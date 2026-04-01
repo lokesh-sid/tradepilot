@@ -17,9 +17,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import tradingbot.agent.TradingAgent;
+import tradingbot.agent.manager.AgentManager;
 import tradingbot.bot.controller.dto.BotState;
 import tradingbot.bot.service.BotCacheService;
 import tradingbot.config.TradingConfig;
@@ -53,6 +57,12 @@ class BotManagementServiceImplTest {
     
     @Mock
     private BotCacheService botCacheService;
+
+        @Mock
+        private AgentManager agentManager;
+
+        @Mock
+        private ObjectMapper objectMapper;
     
     @Mock
     private StreamObserver<CreateBotResponse> createBotResponseObserver;
@@ -86,6 +96,7 @@ class BotManagementServiceImplTest {
     
     private static final String TEST_USER_ID = "user-123";
     private static final String TEST_BOT_ID = "bot-123";
+        private static final String TEST_NUMERIC_BOT_ID = "123456789";
     private static final String TEST_SYMBOL = "BTCUSDT";
     
     @BeforeEach
@@ -93,15 +104,16 @@ class BotManagementServiceImplTest {
         // Reset mocks before each test
         reset(botCacheService, createBotResponseObserver, startBotResponseObserver, 
               stopBotResponseObserver, botStatusResponseObserver, updateBotResponseObserver,
-              deleteBotResponseObserver, listBotsResponseObserver, pauseBotResponseObserver,
+                  deleteBotResponseObserver, listBotsResponseObserver, pauseBotResponseObserver,
               resumeBotResponseObserver);
+          reset(agentManager, objectMapper);
     }
     
     // ==================== CREATE BOT TESTS ====================
     
     @Test
     @DisplayName("Should create bot successfully with valid configuration")
-    void testCreateBotSuccess() {
+    void testCreateBotSuccess() throws Exception {
         // Given
         tradingbot.grpc.common.TradingConfig protoConfig = tradingbot.grpc.common.TradingConfig.newBuilder()
                 .setSymbol(TEST_SYMBOL)
@@ -115,6 +127,11 @@ class BotManagementServiceImplTest {
                 .setUserId(TEST_USER_ID)
                 .setConfig(protoConfig)
                 .build();
+
+        TradingAgent tradingAgent = mock(TradingAgent.class);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(agentManager.createAgent(any())).thenReturn(tradingAgent);
+        when(tradingAgent.getId()).thenReturn(TEST_NUMERIC_BOT_ID);
         
         // When
         botManagementService.createBot(request, createBotResponseObserver);
@@ -136,7 +153,7 @@ class BotManagementServiceImplTest {
     
     @Test
     @DisplayName("Should handle bot creation failure gracefully")
-    void testCreateBotFailure() {
+    void testCreateBotFailure() throws Exception {
         // Given
         tradingbot.grpc.common.TradingConfig protoConfig = tradingbot.grpc.common.TradingConfig.newBuilder()
                 .setSymbol(TEST_SYMBOL)
@@ -150,6 +167,11 @@ class BotManagementServiceImplTest {
                 .setUserId(TEST_USER_ID)
                 .setConfig(protoConfig)
                 .build();
+
+        TradingAgent tradingAgent = mock(TradingAgent.class);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(agentManager.createAgent(any())).thenReturn(tradingAgent);
+        when(tradingAgent.getId()).thenReturn(TEST_NUMERIC_BOT_ID);
         
         doThrow(new RuntimeException("Database error"))
                 .when(botCacheService).saveBotState(anyString(), any(BotState.class));

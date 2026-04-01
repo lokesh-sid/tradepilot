@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * JpaAgentRepository - Spring Data JPA repository for AgentEntity
  */
 @Repository
-public interface JpaAgentRepository extends JpaRepository<AgentEntity, String> {
+public interface JpaAgentRepository extends JpaRepository<AgentEntity, Long> {
     
     /**
      * Find agent by name
@@ -51,7 +51,7 @@ public interface JpaAgentRepository extends JpaRepository<AgentEntity, String> {
     @Modifying
     @Transactional
     @Query("UPDATE AgentEntity a SET a.status = :status WHERE a.id = :id")
-    void updateStatus(@Param("id") String id, @Param("status") AgentEntity.AgentStatus status);
+    void updateStatus(@Param("id") Long id, @Param("status") AgentEntity.AgentStatus status);
 
     /**
      * Targeted status + executionMode update — used when restarting a bot with a
@@ -60,7 +60,7 @@ public interface JpaAgentRepository extends JpaRepository<AgentEntity, String> {
     @Modifying
     @Transactional
     @Query("UPDATE AgentEntity a SET a.status = :status, a.executionMode = :mode WHERE a.id = :id")
-    void updateStatusAndMode(@Param("id") String id,
+    void updateStatusAndMode(@Param("id") Long id,
                              @Param("status") AgentEntity.AgentStatus status,
                              @Param("mode") AgentEntity.ExecutionMode mode);
 
@@ -68,7 +68,7 @@ public interface JpaAgentRepository extends JpaRepository<AgentEntity, String> {
      * Closed projection for active agent routing data.
      */
     interface ActiveAgentProjection {
-        String getId();
+        Long getId();
         String getTradingSymbol();
     }
 }

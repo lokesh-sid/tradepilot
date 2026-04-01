@@ -3,8 +3,6 @@ package tradingbot.agent.api;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -13,6 +11,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import tradingbot.AbstractIntegrationTest;
+import tradingbot.TestIds;
 import tradingbot.agent.api.dto.CreateAgentRequest;
 import tradingbot.bot.messaging.EventPublisher;
 import tradingbot.bot.service.FuturesExchangeService;
@@ -57,7 +56,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Maximize short-term profits through momentum trading",
                 "BTCUSDT",
                 1000.0,
-        null
+                null
         );
 
         performPost(API_AGENTS, request)
@@ -81,7 +80,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 null, // Optional description
                 "ETHUSDT",
                 500.0,
-        null
+                null
         );
 
         performPost(API_AGENTS, request)
@@ -132,7 +131,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test description",
                 "btc-usdt", // Invalid: lowercase and hyphen
                 1000.0,
-        null
+                null
         );
 
         performPost(API_AGENTS, request)
@@ -149,7 +148,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test description",
                 "BTCUSDT",
                 1000.0,
-        null
+                null
         );
 
         performPost(API_AGENTS, request)
@@ -169,7 +168,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test description",
                 "BTCUSDT",
                 1000.0,
-        null
+                null
         );
         MvcResult createResult = performPost(API_AGENTS, createRequest)
                 .andExpect(status().isCreated())
@@ -188,7 +187,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when getting non-existent agent")
     void getAgent_nonExistent_shouldReturn404() throws Exception {
-        String nonExistentId = UUID.randomUUID().toString();
+        String nonExistentId = TestIds.randomNumericIdAsString();
 
         performGet(API_AGENTS + "/" + nonExistentId)
                 .andExpect(status().isNotFound())
@@ -199,7 +198,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 400 with invalid agent ID format")
     void getAgent_invalidIdFormat_shouldReturn400() throws Exception {
-        String invalidId = "not-a-valid-uuid";
+                String invalidId = "not-a-valid-id";
 
         performGet(API_AGENTS + "/" + invalidId)
                 .andExpect(status().isBadRequest())
@@ -242,7 +241,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test activation",
                 "BTCUSDT",
                 1000.0,
-        null
+                null
         );
         MvcResult createResult = performPost(API_AGENTS, createRequest)
                 .andExpect(status().isCreated())
@@ -266,7 +265,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test pause",
                 "BTCUSDT",
                 1000.0,
-        null
+                null
         );
         MvcResult createResult = performPost(API_AGENTS, createRequest)
                 .andExpect(status().isCreated())
@@ -293,7 +292,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test complete lifecycle",
                 "SOLUSDT",
                 750.0,
-        null
+                null
         );
         MvcResult createResult = performPost(API_AGENTS, createRequest)
                 .andExpect(status().isCreated())
@@ -344,7 +343,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Test deletion",
                 "BTCUSDT",
                 1000.0,
-        null
+                null
         );
         MvcResult createResult = performPost(API_AGENTS, createRequest)
                 .andExpect(status().isCreated())
@@ -363,7 +362,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when deleting non-existent agent")
     void deleteAgent_nonExistent_shouldReturn404() throws Exception {
-        String nonExistentId = UUID.randomUUID().toString();
+        String nonExistentId = TestIds.randomNumericIdAsString();
 
         performDelete(API_AGENTS + "/" + nonExistentId)
                 .andExpect(status().isNotFound());
@@ -381,7 +380,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Bitcoin trading",
                 "BTCUSDT",
                 2000.0,
-        null
+                null
         );
         MvcResult result1 = performPost(API_AGENTS, request1)
                 .andExpect(status().isCreated())
@@ -395,7 +394,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                 "Ethereum trading",
                 "ETHUSDT",
                 1500.0,
-        null
+                null
         );
         MvcResult result2 = performPost(API_AGENTS, request2)
                 .andExpect(status().isCreated())
@@ -444,7 +443,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                     "Testing " + goalType,
                     "BTCUSDT",
                     1000.0,
-        null
+                    null
             );
 
             performPost(API_AGENTS, request)
@@ -465,7 +464,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
                     "Trading " + symbol,
                     symbol,
                     1000.0,
-        null
+                    null
             );
 
             performPost(API_AGENTS, request)
@@ -479,7 +478,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when activating non-existent agent")
     void activateAgent_nonExistent_shouldReturn404() throws Exception {
-        String nonExistentId = UUID.randomUUID().toString();
+        String nonExistentId = TestIds.randomNumericIdAsString();
 
         performPost(API_AGENTS + "/" + nonExistentId + "/activate", null)
                 .andExpect(status().isNotFound());
@@ -488,7 +487,7 @@ class AgentControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should return 404 when pausing non-existent agent")
     void pauseAgent_nonExistent_shouldReturn404() throws Exception {
-        String nonExistentId = UUID.randomUUID().toString();
+        String nonExistentId = TestIds.randomNumericIdAsString();
 
         performPost(API_AGENTS + "/" + nonExistentId + "/pause", null)
                 .andExpect(status().isNotFound());

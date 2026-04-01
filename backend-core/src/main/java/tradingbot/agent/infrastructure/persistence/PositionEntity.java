@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
@@ -23,10 +25,11 @@ import jakarta.persistence.Table;
 public class PositionEntity {
     
     @Id
-    private String id;
-    
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     @Column(name = "agent_id", nullable = false)
-    private String agentId;
+    private Long agentId;
     
     @Column(nullable = false)
     private String symbol;
@@ -48,13 +51,13 @@ public class PositionEntity {
     private Double takeProfit;
     
     @Column(name = "main_order_id", nullable = false)
-    private String mainOrderId;
-    
+    private Long mainOrderId;
+
     @Column(name = "stop_loss_order_id")
-    private String stopLossOrderId;
-    
+    private Long stopLossOrderId;
+
     @Column(name = "take_profit_order_id")
-    private String takeProfitOrderId;
+    private Long takeProfitOrderId;
     
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -82,15 +85,15 @@ public class PositionEntity {
     public PositionEntity() {}
     
     public PositionEntity(
-            String id,
-            String agentId,
+            Long id,
+            Long agentId,
             String symbol,
             Direction direction,
             double entryPrice,
             double quantity,
             Double stopLoss,
             Double takeProfit,
-            String mainOrderId,
+            Long mainOrderId,
             Status status,
             Instant openedAt) {
         this.id = id;
@@ -109,11 +112,11 @@ public class PositionEntity {
     }
     
     // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    
-    public String getAgentId() { return agentId; }
-    public void setAgentId(String agentId) { this.agentId = agentId; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public Long getAgentId() { return agentId; }
+    public void setAgentId(Long agentId) { this.agentId = agentId; }
     
     public String getSymbol() { return symbol; }
     public void setSymbol(String symbol) { this.symbol = symbol; }
@@ -133,14 +136,14 @@ public class PositionEntity {
     public Double getTakeProfit() { return takeProfit; }
     public void setTakeProfit(Double takeProfit) { this.takeProfit = takeProfit; }
     
-    public String getMainOrderId() { return mainOrderId; }
-    public void setMainOrderId(String mainOrderId) { this.mainOrderId = mainOrderId; }
-    
-    public String getStopLossOrderId() { return stopLossOrderId; }
-    public void setStopLossOrderId(String stopLossOrderId) { this.stopLossOrderId = stopLossOrderId; }
-    
-    public String getTakeProfitOrderId() { return takeProfitOrderId; }
-    public void setTakeProfitOrderId(String takeProfitOrderId) { this.takeProfitOrderId = takeProfitOrderId; }
+    public Long getMainOrderId() { return mainOrderId; }
+    public void setMainOrderId(Long mainOrderId) { this.mainOrderId = mainOrderId; }
+
+    public Long getStopLossOrderId() { return stopLossOrderId; }
+    public void setStopLossOrderId(Long stopLossOrderId) { this.stopLossOrderId = stopLossOrderId; }
+
+    public Long getTakeProfitOrderId() { return takeProfitOrderId; }
+    public void setTakeProfitOrderId(Long takeProfitOrderId) { this.takeProfitOrderId = takeProfitOrderId; }
     
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }

@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
+import dev.langchain4j.data.message.ChatMessage;
+
 /**
  * ChatMessageEntity - JPA Entity for persisting agent conversation history
  */
@@ -26,25 +28,25 @@ public class ChatMessageEntity {
     private Long id;
 
     @Column(name = "agent_id", nullable = false)
-    private String agentId;
+    private Long agentId;
 
     @Convert(converter = ChatMessageConverter.class)
     @Column(name = "message_json", columnDefinition = "TEXT", nullable = false)
-    private dev.langchain4j.data.message.ChatMessage message;
+    private ChatMessage message;
 
     @Column(nullable = false)
     private Instant timestamp;
 
     protected ChatMessageEntity() {}
 
-    public ChatMessageEntity(String agentId, dev.langchain4j.data.message.ChatMessage message, Instant timestamp) {
+    public ChatMessageEntity(Long agentId, ChatMessage message, Instant timestamp) {
         this.agentId = agentId;
         this.message = message;
         this.timestamp = timestamp;
     }
 
     public Long getId() { return id; }
-    public String getAgentId() { return agentId; }
-    public dev.langchain4j.data.message.ChatMessage getMessage() { return message; }
+    public Long getAgentId() { return agentId; }
+    public ChatMessage getMessage() { return message; }
     public Instant getTimestamp() { return timestamp; }
 }

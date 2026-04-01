@@ -16,21 +16,21 @@ import tradingbot.bot.controller.dto.request.SentimentUpdateRequest;
 class TradingBotControllerValidationTest extends AbstractControllerValidationTest {
 
     private static final String API_V1_BOTS = "/api/v1/bots/";
-    private static final String VALID_UUID   = "123e4567-e89b-12d3-a456-426614174000";
-    private static final String INVALID_UUID = "not-a-uuid";
+    private static final String VALID_BOT_ID   = "123456789";
+    private static final String INVALID_BOT_ID = "not-a-uuid";
 
     // ----- @ValidBotId on path variables -----
 
     @Test
     @DisplayName("Status: invalid botId should return 400 VALIDATION_FAILED")
     void status_invalidBotId() throws Exception {        
-        mockMvc.perform(get(API_V1_BOTS + INVALID_UUID + "/status"))
+        mockMvc.perform(get(API_V1_BOTS + INVALID_BOT_ID + "/status"))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("$.title").value("Constraint Violation"));
     }    @Test
     @DisplayName("Stop: invalid botId should return 400 VALIDATION_FAILED")
     void stop_invalidBotId() throws Exception {
-        mockMvc.perform(put(API_V1_BOTS + INVALID_UUID + "/stop"))
+        mockMvc.perform(put(API_V1_BOTS + INVALID_BOT_ID + "/stop"))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("$.title").value("Constraint Violation"));
     }
@@ -38,7 +38,7 @@ class TradingBotControllerValidationTest extends AbstractControllerValidationTes
     @Test
     @DisplayName("Delete: invalid botId should return 400 VALIDATION_FAILED")
     void delete_invalidBotId() throws Exception {
-        mockMvc.perform(delete(API_V1_BOTS + INVALID_UUID))
+        mockMvc.perform(delete(API_V1_BOTS + INVALID_BOT_ID))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("$.title").value("Constraint Violation"));
     }
@@ -50,7 +50,7 @@ class TradingBotControllerValidationTest extends AbstractControllerValidationTes
     void leverage_belowMinimum() throws Exception {
         LeverageUpdateRequest request = new LeverageUpdateRequest(0.0);
 
-        mockMvc.perform(post(API_V1_BOTS + VALID_UUID + "/leverage")
+        mockMvc.perform(post(API_V1_BOTS + VALID_BOT_ID + "/leverage")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                .andExpect(status().isBadRequest())
@@ -62,7 +62,7 @@ class TradingBotControllerValidationTest extends AbstractControllerValidationTes
     void leverage_aboveMaximum() throws Exception {
         LeverageUpdateRequest request = new LeverageUpdateRequest(126.0);
 
-        mockMvc.perform(post(API_V1_BOTS + VALID_UUID + "/leverage")
+        mockMvc.perform(post(API_V1_BOTS + VALID_BOT_ID + "/leverage")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                .andExpect(status().isBadRequest())
@@ -77,7 +77,7 @@ class TradingBotControllerValidationTest extends AbstractControllerValidationTes
         // Valid leverage should pass validation - we only care that it doesn't return 400 with validation error
         // The actual controller logic (getBotOrThrow, etc.) will fail without full mocking, 
         // but that's outside the scope of validation testing
-        mockMvc.perform(post(API_V1_BOTS + VALID_UUID + "/leverage")
+        mockMvc.perform(post(API_V1_BOTS + VALID_BOT_ID + "/leverage")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                .andExpect(result -> {
@@ -99,7 +99,7 @@ class TradingBotControllerValidationTest extends AbstractControllerValidationTes
     void sentiment_nullEnable() throws Exception {
         String requestJson = "{\"enable\": null}";
 
-        mockMvc.perform(post(API_V1_BOTS + VALID_UUID + "/sentiment")
+        mockMvc.perform(post(API_V1_BOTS + VALID_BOT_ID + "/sentiment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                .andExpect(status().isBadRequest())
@@ -112,7 +112,7 @@ class TradingBotControllerValidationTest extends AbstractControllerValidationTes
         SentimentUpdateRequest request = new SentimentUpdateRequest(true);
 
         // Valid sentiment should pass validation
-        mockMvc.perform(post(API_V1_BOTS + VALID_UUID + "/sentiment")
+        mockMvc.perform(post(API_V1_BOTS + VALID_BOT_ID + "/sentiment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                .andExpect(result -> {

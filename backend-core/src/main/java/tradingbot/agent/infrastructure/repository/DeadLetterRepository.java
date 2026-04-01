@@ -20,7 +20,7 @@ import tradingbot.agent.infrastructure.persistence.DeadLetterEntity;
  *  - Ops tooling queries findUnresolvedByTopic() to review / replay failures.
  */
 @Repository
-public interface DeadLetterRepository extends JpaRepository<DeadLetterEntity, String> {
+public interface DeadLetterRepository extends JpaRepository<DeadLetterEntity, Long> {
 
     /**
      * All unresolved failures for a given original topic (e.g. "kline-closed.BTCUSDT"),

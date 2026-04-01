@@ -12,6 +12,7 @@ import tradingbot.agent.domain.model.AgentId;
 import tradingbot.agent.domain.model.AgentSymbolLink;
 import tradingbot.agent.domain.model.PageResult;
 import tradingbot.agent.domain.repository.AgentRepository;
+import tradingbot.agent.domain.util.Ids;
 
 /**
  * AgentRepositoryImpl - Implementation of domain AgentRepository using Spring Data JPA
@@ -34,7 +35,7 @@ public class AgentRepositoryImpl implements AgentRepository {
     
     @Override
     public Optional<Agent> findById(AgentId id) {
-        return jpaRepository.findById(id.getValue())
+        return jpaRepository.findById(Ids.requireId(id.getValue(), "agentId"))
             .map(AgentMapper::toDomain);
     }
     
@@ -69,13 +70,13 @@ public class AgentRepositoryImpl implements AgentRepository {
     @Override
     public List<AgentSymbolLink> findActiveAgentSymbols() {
         return jpaRepository.findAllActiveAgentSymbols().stream()
-            .map(p -> new AgentSymbolLink(p.getId(), p.getTradingSymbol()))
+            .map(p -> new AgentSymbolLink(Ids.asString(p.getId()), p.getTradingSymbol()))
             .toList();
     }
     
     @Override
     public void delete(AgentId id) {
-        jpaRepository.deleteById(id.getValue());
+        jpaRepository.deleteById(Ids.requireId(id.getValue(), "agentId"));
     }
     
     @Override

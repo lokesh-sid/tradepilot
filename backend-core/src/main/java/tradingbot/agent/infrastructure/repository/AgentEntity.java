@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -19,7 +21,8 @@ import jakarta.persistence.Table;
 public class AgentEntity {
     
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     @Column(nullable = false, unique = true)
     private String name;
     @Column(name = "goal_type", nullable = false)
@@ -74,7 +77,7 @@ public class AgentEntity {
 
     // Builder pattern
     public static class Builder {
-        private String id;
+        private Long id;
         private String name;
         private String goalType;
         private String goalDescription;
@@ -99,7 +102,7 @@ public class AgentEntity {
         private ExecutionMode executionMode = ExecutionMode.NONE;
         private String exchangeName;
 
-        public Builder id(String id) { this.id = id; return this; }
+        public Builder id(Long id) { this.id = id; return this; }
         public Builder name(String name) { this.name = name; return this; }
         public Builder goalType(String goalType) { this.goalType = goalType; return this; }
         public Builder goalDescription(String goalDescription) { this.goalDescription = goalDescription; return this; }
@@ -161,7 +164,7 @@ public class AgentEntity {
     }
 
     // Getters only (no setters for builder pattern)
-    public String getId() { return id; }
+    public Long getId() { return id; }
     public String getName() { return name; }
     public String getGoalType() { return goalType; }
     public String getGoalDescription() { return goalDescription; }

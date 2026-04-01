@@ -3,7 +3,6 @@ package tradingbot.agent.application;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -123,7 +122,7 @@ public class DeadLetterConsumer {
 
         // --- Persist to PostgreSQL --------------------------------------------
         DeadLetterEntity entity = new DeadLetterEntity(
-            UUID.randomUUID().toString(),
+            null,
             originalTopic,
             origPartition,
             origOffset,

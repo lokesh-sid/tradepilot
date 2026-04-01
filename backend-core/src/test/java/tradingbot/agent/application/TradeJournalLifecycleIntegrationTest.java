@@ -14,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 
 import tradingbot.AbstractIntegrationTest;
+import tradingbot.TestIds;
 import tradingbot.agent.application.TradeJournalService.JournalStats;
+import tradingbot.agent.domain.util.Ids;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Direction;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Outcome;
@@ -23,7 +25,7 @@ import tradingbot.agent.infrastructure.repository.TradeJournalRepository;
 @DisplayName("Trade journal — lifecycle integration tests")
 class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
 
-    private static final String AGENT_ID = "agent-lifecycle-test";
+    private static final String AGENT_ID = "1000000000000001";
     private static final String SYMBOL   = "BTCUSDT";
 
     @Autowired private TradeJournalService journalService;
@@ -43,8 +45,8 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
     void createEntry_newTrade_shouldPersistPendingEntry() {
         TradeJournalEntity saved = createEntry(AGENT_ID, SYMBOL, Direction.LONG, 50_000.0);
 
-        assertThat(saved.getId()).isNotBlank();
-        assertThat(saved.getAgentId()).isEqualTo(AGENT_ID);
+        assertThat(saved.getId()).isNotNull().isPositive();
+        assertThat(saved.getAgentId()).isEqualTo(Ids.requireId(AGENT_ID, "agentId"));
         assertThat(saved.getSymbol()).isEqualTo(SYMBOL);
         assertThat(saved.getDirection()).isEqualTo(Direction.LONG);
         assertThat(saved.getEntryPrice()).isEqualTo(50_000.0);
@@ -100,10 +102,10 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("completeEntry completes the most recent PENDING when multiple exist")
     void completeEntry_multiplePending_shouldCompleteLatest() {
         journalService.createEntry(AGENT_ID, SYMBOL, Direction.LONG,
-                48_000.0, 0.1, null, null, 70, "earlier", "ord-1",
+            48_000.0, 0.1, null, null, 70, "earlier", "1001",
                 Instant.now().minusSeconds(300));
         journalService.createEntry(AGENT_ID, SYMBOL, Direction.LONG,
-                50_000.0, 0.1, null, null, 80, "later", "ord-2",
+            50_000.0, 0.1, null, null, 80, "later", "1002",
                 Instant.now());
 
         journalService.completeEntry(AGENT_ID, SYMBOL,
@@ -126,7 +128,7 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
         TradeJournalEntity entry = createEntry(AGENT_ID, SYMBOL, Direction.LONG, 50_000.0);
 
         Optional<TradeJournalEntity> result = journalService.annotateEntry(
-                entry.getId(),
+                String.valueOf(entry.getId()),
                 "Chased momentum — poor risk/reward",
                 List.of("fomo", "late-entry"),
                 (short) 3,
@@ -146,7 +148,7 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("annotateEntry returns empty for unknown id")
     void annotateEntry_unknownId_shouldReturnEmpty() {
         Optional<TradeJournalEntity> result = journalService.annotateEntry(
-                "non-existent-id", "notes", null, null, null, false);
+                TestIds.randomNumericIdAsString(), "notes", null, null, null, false);
 
         assertThat(result).isEmpty();
     }
@@ -161,7 +163,7 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
         TradeJournalEntity entry = createEntry(AGENT_ID, SYMBOL, Direction.LONG, 50_000.0);
         String analysis = "Pattern: btcusdt long entries show overconfidence in trending conditions.";
 
-        journalService.applyBatchReview(entry.getId(), analysis, true);
+        journalService.applyBatchReview(String.valueOf(entry.getId()), analysis, true);
 
         TradeJournalEntity reviewed = journalRepository.findById(entry.getId()).orElseThrow();
         assertThat(reviewed.getLlmBatchAnalysis()).isEqualTo(analysis);
@@ -174,7 +176,7 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
         TradeJournalEntity entry = createEntry(AGENT_ID, SYMBOL, Direction.LONG, 50_000.0);
         String analysis = "No significant patterns identified.";
 
-        journalService.applyBatchReview(entry.getId(), analysis, false);
+        journalService.applyBatchReview(String.valueOf(entry.getId()), analysis, false);
 
         TradeJournalEntity reviewed = journalRepository.findById(entry.getId()).orElseThrow();
         assertThat(reviewed.getLlmBatchAnalysis()).isEqualTo(analysis);
@@ -189,12 +191,12 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
     @DisplayName("list filtered by agentId returns only that agent's entries")
     void list_filterByAgentId_shouldReturnOnlyMatchingAgent() {
         createEntry(AGENT_ID, SYMBOL, Direction.LONG, 50_000.0);
-        createEntry("other-agent", SYMBOL, Direction.SHORT, 50_000.0);
+        createEntry("1000000000000002", SYMBOL, Direction.SHORT, 50_000.0);
 
         Page<TradeJournalEntity> page = journalService.list(AGENT_ID, null, null, null, 0, 20);
 
         assertThat(page.getTotalElements()).isEqualTo(1);
-        assertThat(page.getContent().get(0).getAgentId()).isEqualTo(AGENT_ID);
+        assertThat(page.getContent().get(0).getAgentId()).isEqualTo(Ids.requireId(AGENT_ID, "agentId"));
     }
 
     @Test
@@ -217,14 +219,14 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
         createEntry(AGENT_ID, SYMBOL, Direction.LONG, 50_000.0);
         journalService.completeEntry(AGENT_ID, SYMBOL, 52_000.0, 200.0, 4.0,
                 Outcome.PROFIT, "lesson", Instant.now());
-        createEntry("other-agent", "ETHUSDT", Direction.SHORT, 3_000.0);
-        journalService.completeEntry("other-agent", "ETHUSDT", 3_200.0, -60.0, -2.0,
+        createEntry("1000000000000002", "ETHUSDT", Direction.SHORT, 3_000.0);
+        journalService.completeEntry("1000000000000002", "ETHUSDT", 3_200.0, -60.0, -2.0,
                 Outcome.LOSS, "lesson", Instant.now());
 
         Page<TradeJournalEntity> result = journalService.list(AGENT_ID, null, "PROFIT", null, 0, 20);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).getAgentId()).isEqualTo(AGENT_ID);
+        assertThat(result.getContent().get(0).getAgentId()).isEqualTo(Ids.requireId(AGENT_ID, "agentId"));
         assertThat(result.getContent().get(0).getOutcome()).isEqualTo(Outcome.PROFIT);
     }
 
@@ -233,8 +235,8 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
     void list_filterByFlagged_shouldReturnOnlyFlaggedEntries() {
         TradeJournalEntity flagged   = createEntry(AGENT_ID, SYMBOL, Direction.LONG,  50_000.0);
         TradeJournalEntity unflagged = createEntry(AGENT_ID, SYMBOL, Direction.SHORT, 50_000.0);
-        journalService.applyBatchReview(flagged.getId(),   "analysis mentioning btcusdt long", true);
-        journalService.applyBatchReview(unflagged.getId(), "general analysis", false);
+        journalService.applyBatchReview(String.valueOf(flagged.getId()),   "analysis mentioning btcusdt long", true);
+        journalService.applyBatchReview(String.valueOf(unflagged.getId()), "general analysis", false);
 
         Page<TradeJournalEntity> result = journalService.list(null, null, null, true, 0, 20);
 
@@ -281,7 +283,7 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
                                             Direction direction, double entryPrice) {
         return journalService.createEntry(agentId, symbol, direction,
                 entryPrice, 0.1, null, null, 75, "test reasoning",
-                "ord-" + System.nanoTime(), Instant.now());
+                String.valueOf(System.currentTimeMillis()), Instant.now());
     }
 
     private void createAndClose(String agentId, String symbol, Direction direction,
@@ -294,8 +296,9 @@ class TradeJournalLifecycleIntegrationTest extends AbstractIntegrationTest {
     }
 
     private TradeJournalEntity findFirst(String agentId, String symbol) {
+        Long agentIdLong = Ids.requireId(agentId, "agentId");
         return journalRepository.findAll().stream()
-                .filter(e -> e.getAgentId().equals(agentId) && e.getSymbol().equals(symbol))
+                .filter(e -> e.getAgentId().equals(agentIdLong) && e.getSymbol().equals(symbol))
                 .findFirst().orElseThrow();
     }
 }

@@ -15,7 +15,7 @@ import tradingbot.agent.infrastructure.persistence.TradeJournalEntity;
 import tradingbot.agent.infrastructure.persistence.TradeJournalEntity.Outcome;
 
 @Repository
-public interface TradeJournalRepository extends JpaRepository<TradeJournalEntity, String> {
+public interface TradeJournalRepository extends JpaRepository<TradeJournalEntity, Long> {
 
     // -------------------------------------------------------------------------
     // Lookup
@@ -23,21 +23,21 @@ public interface TradeJournalRepository extends JpaRepository<TradeJournalEntity
 
     /** Most recent PENDING entry for an agent+symbol — used to complete at close. */
     Optional<TradeJournalEntity> findTopByAgentIdAndSymbolAndOutcomeOrderByDecidedAtDesc(
-            String agentId, String symbol, Outcome outcome);
+            Long agentId, String symbol, Outcome outcome);
 
     // -------------------------------------------------------------------------
     // Filtered list queries (for JournalController)
     // -------------------------------------------------------------------------
 
-    Page<TradeJournalEntity> findByAgentId(String agentId, Pageable pageable);
+    Page<TradeJournalEntity> findByAgentId(Long agentId, Pageable pageable);
 
     Page<TradeJournalEntity> findBySymbol(String symbol, Pageable pageable);
 
-    Page<TradeJournalEntity> findByAgentIdAndSymbol(String agentId, String symbol, Pageable pageable);
+    Page<TradeJournalEntity> findByAgentIdAndSymbol(Long agentId, String symbol, Pageable pageable);
 
     Page<TradeJournalEntity> findByOutcome(Outcome outcome, Pageable pageable);
 
-    Page<TradeJournalEntity> findByAgentIdAndOutcome(String agentId, Outcome outcome, Pageable pageable);
+    Page<TradeJournalEntity> findByAgentIdAndOutcome(Long agentId, Outcome outcome, Pageable pageable);
 
     Page<TradeJournalEntity> findByFlaggedForReview(boolean flaggedForReview, Pageable pageable);
 
@@ -67,31 +67,31 @@ public interface TradeJournalRepository extends JpaRepository<TradeJournalEntity
         SELECT COUNT(j) FROM TradeJournalEntity j
         WHERE j.agentId = :agentId AND j.outcome <> :pending
         """)
-    long countClosed(@Param("agentId") String agentId, @Param("pending") Outcome pending);
+    long countClosed(@Param("agentId") Long agentId, @Param("pending") Outcome pending);
 
     @Query("""
         SELECT COUNT(j) FROM TradeJournalEntity j
         WHERE j.agentId = :agentId AND j.outcome = :profit
         """)
-    long countWins(@Param("agentId") String agentId, @Param("profit") Outcome profit);
+    long countWins(@Param("agentId") Long agentId, @Param("profit") Outcome profit);
 
     @Query("""
         SELECT AVG(j.pnlPercent) FROM TradeJournalEntity j
         WHERE j.agentId = :agentId AND j.outcome <> :pending AND j.pnlPercent IS NOT NULL
         """)
-    Double avgPnlPercent(@Param("agentId") String agentId, @Param("pending") Outcome pending);
+    Double avgPnlPercent(@Param("agentId") Long agentId, @Param("pending") Outcome pending);
 
     @Query("""
         SELECT AVG(j.confidence) FROM TradeJournalEntity j
         WHERE j.agentId = :agentId AND j.outcome = :profit AND j.confidence IS NOT NULL
         """)
-    Double avgConfidenceOnWins(@Param("agentId") String agentId, @Param("profit") Outcome profit);
+    Double avgConfidenceOnWins(@Param("agentId") Long agentId, @Param("profit") Outcome profit);
 
     @Query("""
         SELECT AVG(j.confidence) FROM TradeJournalEntity j
         WHERE j.agentId = :agentId AND j.outcome = :loss AND j.confidence IS NOT NULL
         """)
-    Double avgConfidenceOnLosses(@Param("agentId") String agentId, @Param("loss") Outcome loss);
+    Double avgConfidenceOnLosses(@Param("agentId") Long agentId, @Param("loss") Outcome loss);
 
     /** All closed entries for an agent — used for tag-level stats in service layer. */
     @Query("""
@@ -100,6 +100,6 @@ public interface TradeJournalRepository extends JpaRepository<TradeJournalEntity
         ORDER BY j.decidedAt DESC
         """)
     List<TradeJournalEntity> findAllClosedByAgent(
-            @Param("agentId") String agentId,
+            @Param("agentId") Long agentId,
             @Param("pending") Outcome pending);
 }
