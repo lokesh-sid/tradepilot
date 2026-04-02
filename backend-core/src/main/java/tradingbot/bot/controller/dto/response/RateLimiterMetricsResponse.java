@@ -7,13 +7,16 @@ public class RateLimiterMetricsResponse {
     private RateLimiterMetrics trading;
     private RateLimiterMetrics market;
     private RateLimiterMetrics account;
+    private RateLimiterMetrics llm;
 
     public RateLimiterMetricsResponse() {}
 
-    public RateLimiterMetricsResponse(RateLimiterMetrics trading, RateLimiterMetrics market, RateLimiterMetrics account) {
+    public RateLimiterMetricsResponse(RateLimiterMetrics trading, RateLimiterMetrics market,
+                                      RateLimiterMetrics account, RateLimiterMetrics llm) {
         this.trading = trading;
         this.market = market;
         this.account = account;
+        this.llm = llm;
     }
 
     public RateLimiterMetrics getTrading() { return trading; }
@@ -24,6 +27,9 @@ public class RateLimiterMetricsResponse {
 
     public RateLimiterMetrics getAccount() { return account; }
     public void setAccount(RateLimiterMetrics account) { this.account = account; }
+
+    public RateLimiterMetrics getLlm() { return llm; }
+    public void setLlm(RateLimiterMetrics llm) { this.llm = llm; }
 
     public static class RateLimiterMetrics {
         private int availablePermissions;

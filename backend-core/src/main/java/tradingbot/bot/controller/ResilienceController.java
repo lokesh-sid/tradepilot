@@ -1,5 +1,6 @@
 package tradingbot.bot.controller;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,17 +31,20 @@ public class ResilienceController {
     private final RateLimiter binanceTradingRateLimiter;
     private final RateLimiter binanceMarketRateLimiter;
     private final RateLimiter binanceAccountRateLimiter;
+    private final RateLimiter llmRateLimiter;
     private final CircuitBreaker binanceApiCircuitBreaker;
     private final Retry binanceApiRetry;
 
-    public ResilienceController(RateLimiter binanceTradingRateLimiter,
-                               RateLimiter binanceMarketRateLimiter,
-                               RateLimiter binanceAccountRateLimiter,
+    public ResilienceController(@Qualifier("binanceTradingRateLimiter") RateLimiter binanceTradingRateLimiter,
+                               @Qualifier("binanceMarketRateLimiter") RateLimiter binanceMarketRateLimiter,
+                               @Qualifier("binanceAccountRateLimiter") RateLimiter binanceAccountRateLimiter,
+                               @Qualifier("llmRateLimiter") RateLimiter llmRateLimiter,
                                CircuitBreaker binanceApiCircuitBreaker,
                                Retry binanceApiRetry) {
         this.binanceTradingRateLimiter = binanceTradingRateLimiter;
         this.binanceMarketRateLimiter = binanceMarketRateLimiter;
         this.binanceAccountRateLimiter = binanceAccountRateLimiter;
+        this.llmRateLimiter = llmRateLimiter;
         this.binanceApiCircuitBreaker = binanceApiCircuitBreaker;
         this.binanceApiRetry = binanceApiRetry;
     }
@@ -75,8 +79,14 @@ public class ResilienceController {
             binanceAccountRateLimiter.getMetrics().getAvailablePermissions(),
             binanceAccountRateLimiter.getMetrics().getNumberOfWaitingThreads()
         );
-        
-        return new RateLimiterMetricsResponse(trading, market, account);
+
+        // LLM rate limiter metrics
+        RateLimiterMetricsResponse.RateLimiterMetrics llm = new RateLimiterMetricsResponse.RateLimiterMetrics(
+            llmRateLimiter.getMetrics().getAvailablePermissions(),
+            llmRateLimiter.getMetrics().getNumberOfWaitingThreads()
+        );
+
+        return new RateLimiterMetricsResponse(trading, market, account, llm);
     }
 
     /**
@@ -169,10 +179,11 @@ public class ResilienceController {
             );
         
         // Check if rate limiters have available capacity
-        boolean rateLimitersHealthy = 
+        boolean rateLimitersHealthy =
             binanceTradingRateLimiter.getMetrics().getAvailablePermissions() > 0 ||
             binanceMarketRateLimiter.getMetrics().getAvailablePermissions() > 0 ||
-            binanceAccountRateLimiter.getMetrics().getAvailablePermissions() > 0;
+            binanceAccountRateLimiter.getMetrics().getAvailablePermissions() > 0 ||
+            llmRateLimiter.getMetrics().getAvailablePermissions() > 0;
         
         ResilienceHealthResponse.RateLimiterHealth rateLimitersHealth = 
             new ResilienceHealthResponse.RateLimiterHealth(rateLimitersHealthy);

@@ -1,20 +1,11 @@
 package tradingbot.bot.grpc;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tradingbot.agent.TradingAgent;
 import tradingbot.agent.infrastructure.repository.AgentEntity;
 import tradingbot.agent.manager.AgentManager;
@@ -22,50 +13,35 @@ import tradingbot.bot.controller.dto.BotState;
 import tradingbot.bot.service.BotCacheService;
 import tradingbot.config.TradingConfig;
 import tradingbot.grpc.bot.BotManagementServiceGrpc;
-import tradingbot.grpc.bot.BotStatusRequest;
-import tradingbot.grpc.bot.BotStatusResponse;
-import tradingbot.grpc.bot.BotSummary;
-import tradingbot.grpc.bot.CreateBotRequest;
-import tradingbot.grpc.bot.CreateBotResponse;
-import tradingbot.grpc.bot.DeleteBotRequest;
-import tradingbot.grpc.bot.DeleteBotResponse;
-import tradingbot.grpc.bot.ListBotsRequest;
-import tradingbot.grpc.bot.ListBotsResponse;
-import tradingbot.grpc.bot.PauseBotRequest;
-import tradingbot.grpc.bot.PauseBotResponse;
-import tradingbot.grpc.bot.ResumeBotRequest;
-import tradingbot.grpc.bot.ResumeBotResponse;
-import tradingbot.grpc.bot.StartBotRequest;
-import tradingbot.grpc.bot.StartBotResponse;
-import tradingbot.grpc.bot.StopBotRequest;
-import tradingbot.grpc.bot.StopBotResponse;
-import tradingbot.grpc.bot.UpdateBotRequest;
-import tradingbot.grpc.bot.UpdateBotResponse;
+import tradingbot.grpc.bot.*;
 import tradingbot.grpc.common.ErrorResponse;
 
-/**
- * gRPC Service implementation for Bot Management operations
- * 
- * Provides high-performance alternative to REST API for internal Gateway <-> Backend communication.
- * Delegates to existing service layer (BotCacheService) for business logic.
- */
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
 @GrpcService
 public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManagementServiceImplBase {
-    
-    private static final Logger logger = LoggerFactory.getLogger(BotManagementServiceImpl.class);
-    
-    @Autowired
-    private BotCacheService botCacheService;
 
-    @Autowired
-    private AgentManager agentManager;
+    private static final Logger log = LoggerFactory.getLogger(BotManagementServiceImpl.class);
 
-    @Autowired
-    private ObjectMapper objectMapper;
-    
+    private final BotCacheService botCacheService;
+    private final AgentManager agentManager;
+    private final ObjectMapper objectMapper;
+
+    public BotManagementServiceImpl(BotCacheService botCacheService,
+                                    AgentManager agentManager,
+                                    ObjectMapper objectMapper) {
+        this.botCacheService = botCacheService;
+        this.agentManager = agentManager;
+        this.objectMapper = objectMapper;
+    }
+
     @Override
     public void createBot(CreateBotRequest request, StreamObserver<CreateBotResponse> responseObserver) {
-        logger.info("gRPC CreateBot called for user: {}", request.getUserId());
+        log.info("gRPC CreateBot called for user: {}", request.getUserId());
         
         try {
             // Create TradingConfig from Proto config
@@ -135,10 +111,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot created successfully: {}", botId);
+            log.info("Bot created successfully: {}", botId);
             
         } catch (Exception e) {
-            logger.error("Error creating bot", e);
+            log.error("Error creating bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -160,7 +136,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void startBot(StartBotRequest request, StreamObserver<StartBotResponse> responseObserver) {
-        logger.info("gRPC StartBot called for bot: {}", request.getBotId());
+        log.info("gRPC StartBot called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -200,10 +176,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot started successfully: {}", request.getBotId());
+            log.info("Bot started successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error starting bot", e);
+            log.error("Error starting bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -226,7 +202,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void stopBot(StopBotRequest request, StreamObserver<StopBotResponse> responseObserver) {
-        logger.info("gRPC StopBot called for bot: {}", request.getBotId());
+        log.info("gRPC StopBot called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -266,10 +242,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot stopped successfully: {}", request.getBotId());
+            log.info("Bot stopped successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error stopping bot", e);
+            log.error("Error stopping bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -292,7 +268,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void getBotStatus(BotStatusRequest request, StreamObserver<BotStatusResponse> responseObserver) {
-        logger.info("gRPC GetBotStatus called for bot: {}", request.getBotId());
+        log.info("gRPC GetBotStatus called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -320,10 +296,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot status retrieved successfully: {}", request.getBotId());
+            log.info("Bot status retrieved successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error getting bot status", e);
+            log.error("Error getting bot status", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -343,7 +319,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void updateBot(UpdateBotRequest request, StreamObserver<UpdateBotResponse> responseObserver) {
-        logger.info("gRPC UpdateBot called for bot: {}", request.getBotId());
+        log.info("gRPC UpdateBot called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -386,10 +362,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot updated successfully: {}", request.getBotId());
+            log.info("Bot updated successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error updating bot", e);
+            log.error("Error updating bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -411,7 +387,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void deleteBot(DeleteBotRequest request, StreamObserver<DeleteBotResponse> responseObserver) {
-        logger.info("gRPC DeleteBot called for bot: {}", request.getBotId());
+        log.info("gRPC DeleteBot called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -445,10 +421,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot deleted successfully: {}", request.getBotId());
+            log.info("Bot deleted successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error deleting bot", e);
+            log.error("Error deleting bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -470,7 +446,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void listBots(ListBotsRequest request, StreamObserver<ListBotsResponse> responseObserver) {
-        logger.info("gRPC ListBots called for user: {}", request.getUserId());
+        log.info("gRPC ListBots called for user: {}", request.getUserId());
         
         try {
             Set<String> allBotIds = botCacheService.getAllBotIds();
@@ -504,10 +480,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Listed {} bots for user: {}", botSummaries.size(), request.getUserId());
+            log.info("Listed {} bots for user: {}", botSummaries.size(), request.getUserId());
             
         } catch (Exception e) {
-            logger.error("Error listing bots", e);
+            log.error("Error listing bots", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -527,7 +503,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void pauseBot(PauseBotRequest request, StreamObserver<PauseBotResponse> responseObserver) {
-        logger.info("gRPC PauseBot called for bot: {}", request.getBotId());
+        log.info("gRPC PauseBot called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -566,10 +542,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot paused successfully: {}", request.getBotId());
+            log.info("Bot paused successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error pausing bot", e);
+            log.error("Error pausing bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)
@@ -592,7 +568,7 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
     
     @Override
     public void resumeBot(ResumeBotRequest request, StreamObserver<ResumeBotResponse> responseObserver) {
-        logger.info("gRPC ResumeBot called for bot: {}", request.getBotId());
+        log.info("gRPC ResumeBot called for bot: {}", request.getBotId());
         
         try {
             BotState botState = botCacheService.getBotState(request.getBotId());
@@ -631,10 +607,10 @@ public class BotManagementServiceImpl extends BotManagementServiceGrpc.BotManage
             responseObserver.onNext(response);
             responseObserver.onCompleted();
             
-            logger.info("Bot resumed successfully: {}", request.getBotId());
+            log.info("Bot resumed successfully: {}", request.getBotId());
             
         } catch (Exception e) {
-            logger.error("Error resuming bot", e);
+            log.error("Error resuming bot", e);
             
             ErrorResponse error = ErrorResponse.newBuilder()
                     .setCode(500)

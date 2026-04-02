@@ -2,6 +2,7 @@ package tradingbot.agent.infrastructure.llm;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import tradingbot.agent.domain.model.Reasoning;
 import tradingbot.agent.domain.model.ReasoningContext;
 import tradingbot.agent.infrastructure.llm.dto.AnthropicApiRequest;
@@ -26,7 +29,7 @@ import tradingbot.agent.infrastructure.llm.dto.AnthropicApiResponse;
 @ConditionalOnProperty(name = "agent.llm.claude.enabled", havingValue = "true", matchIfMissing = false)
 public class ClaudeClient implements LLMProvider {
 
-    private static final Logger logger = LoggerFactory.getLogger(ClaudeClient.class);
+    private static final Logger log = LoggerFactory.getLogger(ClaudeClient.class);
 
     private static final String API_URL = "https://api.anthropic.com/v1/messages";
     private static final String ANTHROPIC_VERSION = "2023-06-01";
@@ -37,30 +40,33 @@ public class ClaudeClient implements LLMProvider {
     private final int maxTokens;
     private final boolean enabled;
     private final RestTemplate restTemplate;
+    private final RateLimiter rateLimiter;
 
     public ClaudeClient(
             @Value("${agent.llm.claude.api-key}") String apiKey,
             @Value("${agent.llm.claude.model:claude-sonnet-4-6}") String model,
             @Value("${agent.llm.claude.temperature:0.7}") double temperature,
             @Value("${agent.llm.claude.max-tokens:2000}") int maxTokens,
-            @Value("${agent.llm.claude.enabled}") boolean enabled) {
+            @Value("${agent.llm.claude.enabled}") boolean enabled,
+            RateLimiter llmRateLimiter) {
         this.apiKey = apiKey;
         this.model = model;
         this.temperature = temperature;
         this.maxTokens = maxTokens;
         this.enabled = enabled;
         this.restTemplate = new RestTemplate();
+        this.rateLimiter = llmRateLimiter;
     }
 
     @Override
     public Reasoning generateReasoning(ReasoningContext context) {
         if (!enabled || apiKey == null || apiKey.isBlank()) {
-            logger.warn("Claude LLM is not properly configured. Returning fallback reasoning.");
+            log.warn("Claude LLM is not properly configured. Returning fallback reasoning.");
             return createFallbackReasoning(context);
         }
 
         try {
-            logger.info("Calling Claude LLM for agent reasoning");
+            log.info("Calling Claude LLM for agent reasoning");
 
             AnthropicApiRequest request = new AnthropicApiRequest(
                     model,
@@ -77,32 +83,36 @@ public class ClaudeClient implements LLMProvider {
 
             HttpEntity<AnthropicApiRequest> requestEntity = new HttpEntity<>(request, headers);
 
-            ResponseEntity<AnthropicApiResponse> response = restTemplate.exchange(
-                    API_URL,
-                    HttpMethod.POST,
-                    requestEntity,
-                    AnthropicApiResponse.class
+            Supplier<ResponseEntity<AnthropicApiResponse>> apiCall = RateLimiter.decorateSupplier(
+                    rateLimiter,
+                    () -> restTemplate.exchange(API_URL, HttpMethod.POST, requestEntity, AnthropicApiResponse.class)
             );
+
+            ResponseEntity<AnthropicApiResponse> response = apiCall.get();
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 AnthropicApiResponse body = response.getBody();
                 String text = body.extractText();
                 if (text == null) {
-                    logger.warn("Claude response contained no text content");
+                    log.warn("Claude response contained no text content");
                     return createFallbackReasoning(context);
                 }
                 if (body.usage() != null) {
-                    logger.debug("Claude API usage — input: {} tokens, output: {} tokens",
+                    log.debug("Claude API usage — input: {} tokens, output: {} tokens",
                             body.usage().inputTokens(), body.usage().outputTokens());
                 }
                 return ReasoningParser.parse(text, context);
             } else {
-                logger.error("Claude API returned non-success status: {}", response.getStatusCode());
+                log.error("Claude API returned non-success status: {}", response.getStatusCode());
                 return createFallbackReasoning(context);
             }
 
+        } catch (RequestNotPermitted e) {
+            log.warn("LLM rate limit exceeded for {} — falling back to conservative reasoning",
+                    context.getTradingSymbol());
+            return createFallbackReasoning(context);
         } catch (Exception e) {
-            logger.error("Error calling Claude LLM: {}", e.getMessage(), e);
+            log.error("Error calling Claude LLM: {}", e.getMessage(), e);
             return createFallbackReasoning(context);
         }
     }

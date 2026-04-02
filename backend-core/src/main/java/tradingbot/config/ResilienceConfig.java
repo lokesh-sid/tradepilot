@@ -2,6 +2,7 @@ package tradingbot.config;
 
 import java.time.Duration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,11 +15,12 @@ import io.github.resilience4j.retry.RetryConfig;
 
 /**
  * Configuration for Resilience4j rate limiting, circuit breaker, and retry mechanisms
- * 
+ *
  * Defines different rate limiting strategies based on Binance API limits:
  * - Trading operations: Conservative limits for order placement
  * - Market data: Higher limits for price and OHLCV data
  * - Account data: Moderate limits for balance and account info
+ * - LLM API: Conservative per-minute quota guardrail for Claude/Grok calls
  */
 @Configuration
 public class ResilienceConfig {
@@ -100,7 +102,7 @@ public class ResilienceConfig {
         RetryConfig config = RetryConfig.custom()
                 .maxAttempts(3)
                 .waitDuration(Duration.ofSeconds(1))
-                .retryOnException(throwable -> 
+                .retryOnException(throwable ->
                     // Retry on network issues, rate limit exceptions, and temporary API errors
                     throwable instanceof RuntimeException &&
                            (throwable.getMessage() != null &&
@@ -110,7 +112,28 @@ public class ResilienceConfig {
                             throwable.getMessage().contains("temporarily unavailable")))
                 )
                 .build();
-        
+
         return Retry.of("binance-api", config);
+    }
+
+    /**
+     * Rate limiter for LLM API calls (Claude, Grok).
+     * Anthropic Tier 1 allows 50 RPM — default is 20 RPM (conservative).
+     * Adjust agent.llm.rate-limit.requests-per-minute to match your API tier.
+     * Timeout: if a permit is not available within the timeout, RequestNotPermitted
+     * is thrown and ClaudeClient falls back to conservative reasoning rather than
+     * blocking agent threads indefinitely.
+     */
+    @Bean
+    RateLimiter llmRateLimiter(
+            @Value("${agent.llm.rate-limit.requests-per-minute:20}") int requestsPerMinute,
+            @Value("${agent.llm.rate-limit.timeout-seconds:10}") int timeoutSeconds) {
+        RateLimiterConfig config = RateLimiterConfig.custom()
+                .limitForPeriod(requestsPerMinute)
+                .limitRefreshPeriod(Duration.ofMinutes(1))
+                .timeoutDuration(Duration.ofSeconds(timeoutSeconds))
+                .build();
+
+        return RateLimiter.of("llm-api", config);
     }
 }

@@ -274,6 +274,11 @@ public class IntegrationTestConfig {
     }
 
     @Bean
+    public RateLimiter llmRateLimiter() {
+        return Mockito.mock(RateLimiter.class);
+    }
+
+    @Bean
     public CircuitBreaker binanceApiCircuitBreaker() {
         return Mockito.mock(CircuitBreaker.class);
     }
