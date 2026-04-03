@@ -87,7 +87,7 @@ public class TradeReflectionListener {
                     agentId,
                     symbol,
                     event.getExitPrice(),
-                    event.getRealizedPnlPercent() * event.getEntryPrice() / 100.0,
+                    event.getRealizedPnl(),
                     event.getRealizedPnlPercent(),
                     toJournalOutcome(outcome),
                     lessonLearned,

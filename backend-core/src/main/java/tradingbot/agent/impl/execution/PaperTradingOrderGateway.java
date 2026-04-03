@@ -140,6 +140,7 @@ public class PaperTradingOrderGateway implements OrderExecutionGateway {
 
     private ExecutionResult closeLong(AgentDecision decision, String symbol, double currentPrice) {
         double qty = quantities.getOrDefault(symbol, DEFAULT_QUANTITY);
+        double entry = entryPrices.getOrDefault(symbol, currentPrice);
         double balanceBefore = exchange.getMarginBalance();
 
         try {
@@ -151,8 +152,8 @@ public class PaperTradingOrderGateway implements OrderExecutionGateway {
             updateRiskContext(decision.agentId(), symbol);
 
             log.info("[PaperGateway] EXIT_LONG {} @ {} pnl={}", symbol, fillPrice, realizedPnl);
-            return ExecutionResult.filled(ExecutionAction.EXIT_LONG, symbol,
-                    order.getExchangeOrderId(), fillPrice, qty, realizedPnl,
+            return ExecutionResult.filledExit(ExecutionAction.EXIT_LONG, symbol,
+                    order.getExchangeOrderId(), fillPrice, qty, entry, realizedPnl,
                     "Paper LONG exit");
         } catch (Exception ex) {
             log.warn("[PaperGateway] EXIT_LONG failed for {}: {}", symbol, ex.getMessage());
@@ -162,6 +163,7 @@ public class PaperTradingOrderGateway implements OrderExecutionGateway {
 
     private ExecutionResult closeShort(AgentDecision decision, String symbol, double currentPrice) {
         double qty = quantities.getOrDefault(symbol, DEFAULT_QUANTITY);
+        double entry = entryPrices.getOrDefault(symbol, currentPrice);
         double balanceBefore = exchange.getMarginBalance();
 
         try {
@@ -173,8 +175,8 @@ public class PaperTradingOrderGateway implements OrderExecutionGateway {
             updateRiskContext(decision.agentId(), symbol);
 
             log.info("[PaperGateway] EXIT_SHORT {} @ {} pnl={}", symbol, fillPrice, realizedPnl);
-            return ExecutionResult.filled(ExecutionAction.EXIT_SHORT, symbol,
-                    order.getExchangeOrderId(), fillPrice, qty, realizedPnl,
+            return ExecutionResult.filledExit(ExecutionAction.EXIT_SHORT, symbol,
+                    order.getExchangeOrderId(), fillPrice, qty, entry, realizedPnl,
                     "Paper SHORT exit");
         } catch (Exception ex) {
             log.warn("[PaperGateway] EXIT_SHORT failed for {}: {}", symbol, ex.getMessage());

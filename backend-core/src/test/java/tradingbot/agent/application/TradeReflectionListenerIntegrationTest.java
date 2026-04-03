@@ -151,9 +151,10 @@ class TradeReflectionListenerIntegrationTest extends AbstractIntegrationTest {
 
     private void publishEvent(String agentId, String symbol,
                                double entryPrice, double exitPrice, double pnlPercent) {
+        double realizedPnl = pnlPercent * entryPrice / 100.0;
         eventPublisher.publishEvent(new TradeCompletedEvent(
                 agentId, symbol, TradeMemoryEntity.Direction.LONG,
-                entryPrice, exitPrice, pnlPercent, "Pre-trade reasoning for test"));
+                entryPrice, exitPrice, pnlPercent, realizedPnl, "Pre-trade reasoning for test"));
     }
 
     /**

@@ -143,15 +143,23 @@ public class TradeExecutionService {
 
     private void publishTradeCompleted(String executorId, String symbol,
                                         AgentDecision decision, ExecutionResult result) {
+        if (result.action() != ExecutionAction.EXIT_LONG && result.action() != ExecutionAction.EXIT_SHORT) {
+            logger.error("[TradeExecutionService] publishTradeCompleted called with non-exit action {} for {} on {} — skipping",
+                    result.action(), executorId, symbol);
+            return;
+        }
         double exitPrice = result.fillPrice();
-        double pnlPercent = result.realizedPnl();
-        // Approximate entry: exit / (1 + pnl%) — avoids storing entry price separately
-        double impliedEntry = pnlPercent != 0 ? exitPrice / (1.0 + pnlPercent / 100.0) : exitPrice;
-        TradeMemoryEntity.Direction memDir = result.action() == ExecutionAction.EXIT_LONG
+        double entryPrice = result.entryPrice();
+        double realizedPnl = result.realizedPnl();
+        boolean isLong = result.action() == ExecutionAction.EXIT_LONG;
+        double pnlPercent = entryPrice > 0
+                ? (isLong ? exitPrice - entryPrice : entryPrice - exitPrice) / entryPrice * 100.0
+                : 0.0;
+        TradeMemoryEntity.Direction memDir = isLong
                 ? TradeMemoryEntity.Direction.LONG
                 : TradeMemoryEntity.Direction.SHORT;
         eventPublisher.publishEvent(new TradeCompletedEvent(
-                executorId, symbol, memDir, impliedEntry, exitPrice, pnlPercent, decision.reasoning()));
+                executorId, symbol, memDir, entryPrice, exitPrice, pnlPercent, realizedPnl, decision.reasoning()));
         logger.info("[TradeExecutionService] TradeCompletedEvent published for {} on {}", executorId, symbol);
     }
 

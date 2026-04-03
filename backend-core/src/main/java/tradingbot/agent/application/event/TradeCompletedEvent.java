@@ -20,6 +20,7 @@ public class TradeCompletedEvent {
     private final double entryPrice;
     private final double exitPrice;
     private final double realizedPnlPercent;
+    private final double realizedPnl;
     private final String originalReasoning;
 
     public TradeCompletedEvent(
@@ -29,6 +30,7 @@ public class TradeCompletedEvent {
             double entryPrice,
             double exitPrice,
             double realizedPnlPercent,
+            double realizedPnl,
             String originalReasoning) {
         this.executorId = executorId;
         this.symbol = symbol;
@@ -36,6 +38,7 @@ public class TradeCompletedEvent {
         this.entryPrice = entryPrice;
         this.exitPrice = exitPrice;
         this.realizedPnlPercent = realizedPnlPercent;
+        this.realizedPnl = realizedPnl;
         this.originalReasoning = originalReasoning;
     }
 
@@ -61,6 +64,10 @@ public class TradeCompletedEvent {
 
     public double getRealizedPnlPercent() {
         return realizedPnlPercent;
+    }
+
+    public double getRealizedPnl() {
+        return realizedPnl;
     }
 
     public String getOriginalReasoning() {

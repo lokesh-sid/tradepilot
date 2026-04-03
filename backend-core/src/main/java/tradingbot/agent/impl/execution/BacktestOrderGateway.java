@@ -165,8 +165,8 @@ public class BacktestOrderGateway implements OrderExecutionGateway {
             updateRiskContext(decision.agentId(), symbol);
 
             log.debug("[BacktestGateway] EXIT_LONG {} @ {} pnl={}", symbol, fillPrice, realizedPnl);
-            return ExecutionResult.filled(ExecutionAction.EXIT_LONG, symbol,
-                    order.getExchangeOrderId(), fillPrice, qty, realizedPnl,
+            return ExecutionResult.filledExit(ExecutionAction.EXIT_LONG, symbol,
+                    order.getExchangeOrderId(), fillPrice, qty, entry, realizedPnl,
                     "Closed LONG via " + decision.reasoning());
         } catch (Exception ex) {
             log.warn("[BacktestGateway] EXIT_LONG failed for {}: {}", symbol, ex.getMessage());
@@ -188,8 +188,8 @@ public class BacktestOrderGateway implements OrderExecutionGateway {
             updateRiskContext(decision.agentId(), symbol);
 
             log.debug("[BacktestGateway] EXIT_SHORT {} @ {} pnl={}", symbol, fillPrice, realizedPnl);
-            return ExecutionResult.filled(ExecutionAction.EXIT_SHORT, symbol,
-                    order.getExchangeOrderId(), fillPrice, qty, realizedPnl,
+            return ExecutionResult.filledExit(ExecutionAction.EXIT_SHORT, symbol,
+                    order.getExchangeOrderId(), fillPrice, qty, entry, realizedPnl,
                     "Closed SHORT via " + decision.reasoning());
         } catch (Exception ex) {
             log.warn("[BacktestGateway] EXIT_SHORT failed for {}: {}", symbol, ex.getMessage());

@@ -187,6 +187,7 @@ public class LiveOrderGateway implements OrderExecutionGateway {
 
     private ExecutionResult closeLong(AgentDecision decision, String symbol, double currentPrice) {
         double qty = quantities.getOrDefault(symbol, DEFAULT_QUANTITY);
+        double entry = entryPrices.getOrDefault(symbol, currentPrice);
         double balanceBefore = exchange.getMarginBalance();
 
         double slPercent = decision.stopLossPercent() != null ? decision.stopLossPercent() : SL_PERCENT;
@@ -202,8 +203,8 @@ public class LiveOrderGateway implements OrderExecutionGateway {
 
             log.info("[LiveGateway] EXIT_LONG {} @ {} pnl={} orderId={}",
                     symbol, fillPrice, realizedPnl, order.getExchangeOrderId());
-            return ExecutionResult.filled(ExecutionAction.EXIT_LONG, symbol,
-                    order.getExchangeOrderId(), fillPrice, qty, realizedPnl,
+            return ExecutionResult.filledExit(ExecutionAction.EXIT_LONG, symbol,
+                    order.getExchangeOrderId(), fillPrice, qty, entry, realizedPnl,
                     "Closed LONG on live exchange");
         } catch (Exception ex) {
             log.error("[LiveGateway] EXIT_LONG failed for {}: {}", symbol, ex.getMessage(), ex);
@@ -213,6 +214,7 @@ public class LiveOrderGateway implements OrderExecutionGateway {
 
     private ExecutionResult closeShort(AgentDecision decision, String symbol, double currentPrice) {
         double qty = quantities.getOrDefault(symbol, DEFAULT_QUANTITY);
+        double entry = entryPrices.getOrDefault(symbol, currentPrice);
         double balanceBefore = exchange.getMarginBalance();
 
         double slPercent = decision.stopLossPercent() != null ? decision.stopLossPercent() : SL_PERCENT;
@@ -228,8 +230,8 @@ public class LiveOrderGateway implements OrderExecutionGateway {
 
             log.info("[LiveGateway] EXIT_SHORT {} @ {} pnl={} orderId={}",
                     symbol, fillPrice, realizedPnl, order.getExchangeOrderId());
-            return ExecutionResult.filled(ExecutionAction.EXIT_SHORT, symbol,
-                    order.getExchangeOrderId(), fillPrice, qty, realizedPnl,
+            return ExecutionResult.filledExit(ExecutionAction.EXIT_SHORT, symbol,
+                    order.getExchangeOrderId(), fillPrice, qty, entry, realizedPnl,
                     "Closed SHORT on live exchange");
         } catch (Exception ex) {
             log.error("[LiveGateway] EXIT_SHORT failed for {}: {}", symbol, ex.getMessage(), ex);
